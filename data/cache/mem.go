@@ -5,18 +5,20 @@ import (
 	"strings"
 )
 
-var caches = map[string]interface{}{}
+var caches  map[string]interface{}
 
 var cacheRWLock = make(chan int8, 1)
 
+func init(){
+	caches = map[string]interface{}{}
+}
+
 func getRWLock() {
 	cacheRWLock <- int8(1)
-	return
 }
 
 func releaseRWLock() {
 	<-cacheRWLock
-	return
 }
 
 func Set(key string, data interface{}) {
@@ -42,7 +44,14 @@ func Delete(key string) {
 	delete(caches, key)
 }
 
-func DeleteByPrefix(prefixes []string) {
+func Flush()bool{
+	getRWLock()
+	caches = map[string]interface{}{}
+	releaseRWLock()
+	return true
+}
+
+func DeleteByPrefix(prefixes []string)bool{
 	getRWLock()
 	defer releaseRWLock()
 	for key, _ := range caches {
@@ -52,4 +61,5 @@ func DeleteByPrefix(prefixes []string) {
 			}
 		}
 	}
+	return true
 }

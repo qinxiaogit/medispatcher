@@ -7,6 +7,7 @@ import (
 	"medispatcher/logger"
 	"medispatcher/msgredist"
 	"medispatcher/recoverwatcher"
+	rpcSrv "medispatcher/rpc/connection"
 	"medispatcher/sender"
 	"os"
 	"os/signal"
@@ -25,7 +26,9 @@ func main() {
 		os.Exit(1)
 	}
 	logger.InitDefaultLogger()
+
 	go ProcessSysSignal()
+	go rpcSrv.StartServer()
 	go recoverwatcher.StartAndWait()
 	go msgredist.StartAndWait()
 	go sender.StartAndWait()
@@ -56,6 +59,7 @@ func ProcessSysSignal() {
 					return
 				}
 				workerExitSigChan := make(chan string)
+				go rpcSrv.Stop(&workerExitSigChan)
 				go msgredist.Stop(&workerExitSigChan)
 				go recoverwatcher.Stop(&workerExitSigChan)
 				go sender.Stop(&workerExitSigChan)
