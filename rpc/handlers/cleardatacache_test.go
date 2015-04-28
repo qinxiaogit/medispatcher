@@ -5,6 +5,7 @@ import (
 	"medispatcher/config"
 	"medispatcher/rpclient"
 	"testing"
+	"fmt"
 )
 
 func init() {
@@ -17,6 +18,7 @@ func TestCall(t *testing.T) {
 	if err == nil {
 		var re interface{}
 		re, err = c.Call("ClearDataCache", map[string]interface{}{})
+		fmt.Println(re)
 		if re != true {
 			err = errors.New("Not cleared")
 		}

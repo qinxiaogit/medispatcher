@@ -21,7 +21,7 @@ func StartAndWait() {
 		<-*ch
 	}
 	for !shouldExit() {
-		time.Sleep(time.Millisecond * 300)
+		time.Sleep(time.Millisecond * 30)
 	}
 	<-exitChan
 }
@@ -77,71 +77,72 @@ func redistMainQueue(sigChan *chan int8) {
 		if err == nil {
 			var stats map[string]interface{}
 			// put message to subscription channel queues.
-			stats, err = br.StatsJob(jobId)
-			if err == nil {
-				broker.NormalizeJobStats(&stats)
-				var msg data.MessageStuct
-				msg, err = data.UnserializeMessage(jobBody)
+			var msg data.MessageStuct
+			msg, err = data.UnserializeMessage(jobBody)
+			if err != nil {
+				// in this case, do not try to distribute it again, just bury it for further manual investigation.
+				logger.GetLogger("WARN").Printf("Failed to unserialize message: %v : %v", jobId, err)
+				br.Bury(jobId)
+				continue
+			} else {
+				msg.OriginJobId = jobId
+				jobBody, err = data.SerializeMessage(msg)
 				if err != nil {
-					// in this case, do not try to distribute it again, just bury it for further manual investigation.
-					logger.GetLogger("WARN").Printf("Failed to unserialize message: %v : %v", jobId, err)
 					br.Bury(jobId)
+					logger.GetLogger("WARN").Printf("Failed to re-serialize message: %v. Buried!", msg.MsgKey, err)
 					continue
-				} else {
-					msg.OriginJobId = jobId
-					jobBody, err = data.SerializeMessage(msg)
+				}
+			}
+			var subscriptions []data.SubscriptionRecord
+			subscriptions, err = data.GetSubscriptionsByTopicWithCache(msg.MsgKey)
+			if err != nil {
+				stats, err = br.StatsJob(jobId)
+				if err != nil {
+					logger.GetLogger("WARN").Printf("Failed to stats job when releasing the job: %v. waits for trr and try again later.", err)
+					continue
+				}
+				broker.NormalizeJobStats(&stats)
+				br.Release(jobId, stats["pri"].(uint32), stats["delay"].(uint64))
+				logger.GetLogger("WARN").Printf("Failed to get subscription information for message: %v. Try again later!", msg.MsgKey, err)
+				time.Sleep(time.Second * DELAY_OF_RE_DISTRIBUTE_MESSAGE_ON_FAILURE)
+				continue
+			} else {
+				for _, sub := range subscriptions {
+					subChannel := config.GetChannelName(msg.MsgKey, sub.Subscription_id)
+					err = br.Use(subChannel)
+					if err == nil {
+						_, err = br.Pub(broker.DEFAULT_MSG_PRIORITY, 0, broker.DEFAULT_MSG_TTR, jobBody)
+					}
 					if err != nil {
-						br.Release(jobId, stats["pri"].(uint32), stats["delay"].(uint64))
-						logger.GetLogger("WARN").Printf("Failed to re-serialize message: %v. Try again later!", msg.MsgKey, err)
-						time.Sleep(time.Second * DELAY_OF_RE_DISTRIBUTE_MESSAGE_ON_FAILURE)
-						continue
+						logger.GetLogger("WARN").Printf("Failed to redispatch message:[%v] to channel [%v] : %v", msg.MsgKey, subChannel, err)
+						logger.GetLogger("DATA").Printf("REDISTFAIL %v %v %v", jobId, sub.Subscription_id, jobBody)
 					}
 				}
-				var subscriptions []data.SubscriptionRecord
-				subscriptions, err = data.GetSubscriptionsByTopicWithCache(msg.MsgKey)
-				if err != nil {
-					br.Release(jobId, stats["pri"].(uint32), stats["delay"].(uint64))
-					logger.GetLogger("WARN").Printf("Failed to get subscription information for message: %v. Try again later!", msg.MsgKey, err)
-					time.Sleep(time.Second * DELAY_OF_RE_DISTRIBUTE_MESSAGE_ON_FAILURE)
-					continue
-				} else {
-					for _, sub := range subscriptions {
-						subChannel := config.GetChannelName(msg.MsgKey, sub.Subscription_id)
-						err = br.Use(subChannel)
-						if err == nil {
-							_, err = br.Pub(stats["pri"].(uint32), stats["delay"].(uint64), stats["ttr"].(uint64), jobBody)
-						}
-						if err != nil {
-							logger.GetLogger("WARN").Printf("Failed to redispatch message:[%v] to channel [%v] : %v", msg.MsgKey, subChannel, err)
-							logger.GetLogger("DATA").Printf("REDISTFAIL %v %v %v", jobId, sub.Subscription_id, jobBody)
-						}
-					}
 
-					// ensure deleted of job
-					jobDeleted := false
-					for {
-						if jobDeleted {
-							break
-						}
-						err = br.Delete(jobId)
-						if err == nil {
+				// ensure deleted of job
+				jobDeleted := false
+				for {
+					if jobDeleted {
+						break
+					}
+					err = br.Delete(jobId)
+					if err == nil {
+						jobDeleted = true
+					} else {
+						switch err.Error() {
+						case broker.ERROR_JOB_NOT_FOUND:
 							jobDeleted = true
-						} else {
-							switch err.Error() {
-							case broker.ERROR_JOB_NOT_FOUND:
-								jobDeleted = true
-							case broker.ERROR_CONN_CLOSED:
-								// retrieve a usable broker.
-								// if brPt is nil means the medispatcher service should exit,
-								// so the deleting is to fail, then fallthrough to log the failure.
-								brPt = broker.GetBrokerWitBlock(INTERVAL_OF_RETRY_ON_CONN_FAIL, shouldExit)
-								if brPt != nil {
-									br = *brPt
-								}
-								fallthrough
-							default:
-								logger.GetLogger("WARN").Printf("Failed to delete job: %v : %v", err, jobId)
+						case broker.ERROR_CONN_CLOSED:
+							// retrieve a usable broker.
+							// if brPt is nil means the medispatcher service should exit,
+							// so the deleting is to fail, then fallthrough to log the failure.
+							brPt = broker.GetBrokerWitBlock(INTERVAL_OF_RETRY_ON_CONN_FAIL, shouldExit)
+							if brPt != nil {
+								br = *brPt
 							}
+							fallthrough
+						default:
+							logger.GetLogger("WARN").Printf("Failed to delete job: %v : %v", err, jobId)
 						}
 					}
 				}

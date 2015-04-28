@@ -81,6 +81,8 @@ func ParseConfig() (*Config, error) {
 				case reflect.Uint, reflect.Uint64, reflect.Uint32, reflect.Uint16, reflect.Uint8:
 					elem.SetUint(sItem.(uint64))
 				}
+			default:
+				elem.Set(reflect.ValueOf(sItem))
 			}
 		}
 	}

@@ -13,6 +13,7 @@ import (
 	"net"
 	"strconv"
 	"time"
+	"reflect"
 )
 
 const (
@@ -275,13 +276,23 @@ func processRequest(requestData []byte) (re []byte, err error) {
 		return
 	}
 	// TODO: more strict client data checks to avoid server crash.
-	if _, exists:= clientData["cmd"]; !exists{
+	if _, exists := clientData["cmd"]; !exists {
 		err = errors.New("Illegal client request: 'cmd' field not found!")
 		return
 	}
 
-	if _, exists:= clientData["args"]; !exists{
+	if _, ok := clientData["cmd"].(string); !ok {
+		err=errors.New("Args needs string while received: " + reflect.TypeOf(clientData["cmd"]).String())
+		return
+	}
+
+	if _, exists := clientData["args"]; !exists {
 		err = errors.New("Illegal client request: 'args' field not found!")
+		return
+	}
+
+	if _, ok := clientData["args"].(map[string]interface{}); !ok {
+		err=errors.New("Args needs map[string]interface while received: " + reflect.TypeOf(clientData["args"]).String())
 		return
 	}
 

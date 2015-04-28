@@ -4,6 +4,7 @@ import(
 	"medispatcher/rpc/handler"
 	"medispatcher/data/cache"
 	"errors"
+	"reflect"
 )
 
 type ClearDataCache struct{}
@@ -20,10 +21,20 @@ func (_ ClearDataCache)Process(args map[string]interface{})(interface{}, error){
 	} else {
 		var prefixes []string
 		var ok bool
+		var tPre []interface{}
+		var tPreS string
 		for _, i:= range args {
-			prefixes, ok = i.([]string)
+			tPre, ok = i.([]interface{})
 			if !ok{
-			   return nil, errors.New("prefixes is not type string list.")
+			   return nil, errors.New("prefixes '"+reflect.TypeOf(i).String()+"' is not type interface list.")
+			}
+			for _, i:=range tPre {
+				tPreS, ok= i.(string)
+				if !ok{
+					return nil, errors.New("prefix is not a string.")
+				} else {
+					prefixes = append(prefixes, tPreS)
+				}
 			}
 		}
 		return cache.DeleteByPrefix(prefixes), nil

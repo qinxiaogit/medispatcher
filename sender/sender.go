@@ -1,3 +1,4 @@
+// TODO: When subscription is canceled.
 package sender
 
 import (
@@ -44,7 +45,6 @@ func StartAndWait() {
 				allExited = false
 			}
 		}
-		//		fmt.Println(allExited)
 		if allExited {
 			break
 		} else {
@@ -107,13 +107,13 @@ func handleSubscription(sub data.SubscriptionRecord) {
 			// test routines which has exited abnormally.
 			var tempChans []*chan SubSenderRoutineChanSig
 			for _, ch := range allSigChans {
-				select{
-					case sig := <- *ch:
-						if sig != SENDER_ROUTINE_SIG_EXITED {
-							tempChans = append(tempChans, ch)
-						}
-			        default:
+				select {
+				case sig := <-*ch:
+					if sig != SENDER_ROUTINE_SIG_EXITED {
 						tempChans = append(tempChans, ch)
+					}
+				default:
+					tempChans = append(tempChans, ch)
 				}
 			}
 			allSigChans = tempChans
@@ -171,16 +171,17 @@ func sendSubscription(sub data.SubscriptionRecord, ch *chan SubSenderRoutineChan
 		}
 	}()
 	var (
-		br              broker.Broker
-		brPt            *broker.Broker
-		err             error
-		jobId, logId    uint64
-		jobBody         []byte
-		httpStatusCode  int
-		returnData      []byte
-		sentSuccess     bool
-		respd, jobStats map[string]interface{}
-		errMsgInSending string
+		br                     broker.Broker
+		brPt                   *broker.Broker
+		err                    error
+		jobId, logId           uint64
+		jobBody                []byte
+		httpStatusCode         int
+		returnData             []byte
+		sentSuccess            bool
+		respd, jobStats        map[string]interface{}
+		errMsgInSending        string
+		timerOfSendingInterval time.Time
 	)
 	queueName := config.GetChannelName(sub.Class_key, sub.Subscription_id)
 	for {
@@ -193,6 +194,7 @@ func sendSubscription(sub data.SubscriptionRecord, ch *chan SubSenderRoutineChan
 				return
 			}
 		default:
+			timerOfSendingInterval = time.Now()
 			if brPt == nil {
 				brPt = broker.GetBrokerWitBlock(INTERVAL_OF_RETRY_ON_CONN_FAIL, shouldExit)
 				if brPt != nil {
@@ -300,6 +302,11 @@ func sendSubscription(sub data.SubscriptionRecord, ch *chan SubSenderRoutineChan
 							sub.Reception_channel,
 							msg.Body,
 						)
+					}
+					elapsed := time.Now().Sub(timerOfSendingInterval)
+					minInterval := time.Millisecond * time.Duration(config.GetConfig().IntervalOfSendingForSendRoutine)
+					if elapsed < minInterval {
+						time.Sleep(minInterval - elapsed)
 					}
 				}
 			}

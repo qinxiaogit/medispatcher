@@ -64,7 +64,7 @@ func ProcessSysSignal() {
 				go recoverwatcher.Stop(&workerExitSigChan)
 				go sender.Stop(&workerExitSigChan)
 				sigReceivedCount := 0
-				for sigReceivedCount < 3 {
+				for sigReceivedCount < 4 {
 					select {
 					case workerName := <-workerExitSigChan:
 						sigReceivedCount += 1
