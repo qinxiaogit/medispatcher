@@ -137,8 +137,8 @@ func handleSubscription(sub data.SubscriptionRecord) {
 					default:
 					}
 				}
-				time.Sleep(time.Millisecond * 3)
 			}
+
 			sossr.SetCoCount(0)
 			sossr.SetCoCountOfRetry(0)
 			sossr.SetExited()
@@ -323,17 +323,18 @@ func sendSubscriptionAsRetry(sub data.SubscriptionRecord, ch *chan SubSenderRout
 		}
 	}()
 	var (
-		br              broker.Broker
-		brPt            *broker.Broker
-		err, sendingErr error
-		jobId           uint64
-		jobBody         []byte
-		httpStatusCode  int
-		returnData      []byte
-		sentSuccess     bool
-		sentStatus      uint8
-		respd, jobStats map[string]interface{}
-		errMsgInSending string
+		br                     broker.Broker
+		brPt                   *broker.Broker
+		err, sendingErr        error
+		jobId                  uint64
+		jobBody                []byte
+		httpStatusCode         int
+		returnData             []byte
+		sentSuccess            bool
+		sentStatus             uint8
+		respd, jobStats        map[string]interface{}
+		errMsgInSending        string
+		timerOfSendingInterval time.Time
 	)
 	queueName := config.GetChannelNameForReSend(sub.Class_key, sub.Subscription_id)
 
@@ -347,6 +348,7 @@ func sendSubscriptionAsRetry(sub data.SubscriptionRecord, ch *chan SubSenderRout
 				return
 			}
 		default:
+			timerOfSendingInterval = time.Now()
 			if brPt == nil {
 				brPt = broker.GetBrokerWitBlock(INTERVAL_OF_RETRY_ON_CONN_FAIL, shouldExit)
 				if brPt != nil {
@@ -466,6 +468,12 @@ func sendSubscriptionAsRetry(sub data.SubscriptionRecord, ch *chan SubSenderRout
 					}
 				}
 			}
+
+			elapsed := time.Now().Sub(timerOfSendingInterval)
+			minInterval := time.Millisecond * time.Duration(config.GetConfig().IntervalOfSendingForSendRoutineOfRetry)
+			if elapsed < minInterval {
+				time.Sleep(minInterval - elapsed)
+			}
 		}
 	}
 }
@@ -479,7 +487,13 @@ func transferSubscriptionViaHttp(msg *data.MessageStuct, sub *data.SubscriptionR
 		err = errors.New(fmt.Sprintf("Failed to parse subscription url: %v : %v", (*sub).Reception_channel, err))
 		return
 	}
-	subUrl.RawQuery += fmt.Sprintf("&jobid=%v&retry_times=%v", uniqJobId, retryTimes)
+	var appendedQueryStr string
+	if len(subUrl.RawQuery) > 0 {
+		appendedQueryStr = fmt.Sprintf("&jobid=%v&retry_times=%v", uniqJobId, retryTimes)
+	} else {
+		appendedQueryStr = fmt.Sprintf("jobid=%v&retry_times=%v", uniqJobId, retryTimes)
+	}
+	subUrl.RawQuery += appendedQueryStr
 	postFields := map[string]string{"retry_times": strconv.Itoa(int(retryTimes)), "jobid": uniqJobId}
 	msgBody, err = json.Marshal(msg.Body)
 	if err != nil {

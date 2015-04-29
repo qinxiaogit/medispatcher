@@ -21,7 +21,7 @@ const (
 
 const (
 	INTERVAL_OF_RETRY_ON_CONN_FAIL = 3
-	DEFAULT_RESERVE_TIMEOUT        = 2
+	DEFAULT_RESERVE_TIMEOUT        = 1
 )
 
 var senderRoutineStatus = map[int32]*StatusOfSubSenderRoutine{}

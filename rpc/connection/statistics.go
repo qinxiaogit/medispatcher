@@ -133,6 +133,8 @@ func startConsole() {
 		conn, err := server.Accept()
 		if err != nil {
 			logger.GetLogger("ERROR").Printf("Console server failed to accept connection: %v", err)
+			continue
+
 		}
 		go func() {
 			cmd := make([]byte, 51)
