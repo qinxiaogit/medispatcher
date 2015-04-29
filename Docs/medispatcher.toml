@@ -1,34 +1,40 @@
 # medispatcher config file. It should be placed to /etc/medispacher.toml
-#TOML v0.2 FORMAT
+# TOML v0.2 FORMAT
 DAEMON_USER="www-data"
 
 LOG_DIR="/var/log/medispatcher"
+
+# 提供RPC服务的地址. 如：缓存清除、参数动态调节等。
 ListenAddr="0.0.0.0:5601"
 
+# 队列服务器地址, 如beanstalkd的为 127.0.0.1:11300
 QueueServerAddr="127.0.0.1:11300"
 
 NameOfMainQueue="event_center_messages"
 
 PrefixOfChannelQueue="sub-queue/"
 
+# 开启消息推送日志
 EnableMsgSentLog=true
 
 ListenersOfMainQueue=10
 
 SendersPerChannel=5
+
 SendersPerRetryChannel=2
 
 # (正常队列上)每个订阅单线程上最小推送间隔时间。
-IntervalOfSendingForSendRoutine=100
+IntervalOfSendingForSendRoutine=10
 
 # (重试队列上)每个订阅单线程上最小推送间隔时间。
-IntervalOfSendingForSendRoutineOfRetry=100
+IntervalOfSendingForSendRoutineOfRetry=10
 
 # 重试延时参数. 值越大，下一次推送时间滞后越大.
 # interval = pow(retryTimes+1, 2)*CoeOfIntervalForRetrySendingMsg
 CoeOfIntervalForRetrySendingMsg=1
 
 MsgQueueFaultToleranceListNamePrefix="event_center_message_in_failure_log:"
+
 [Database]
 Host="192.168.25.9"
 Port=3306
