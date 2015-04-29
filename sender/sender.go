@@ -495,7 +495,12 @@ func transferSubscriptionViaHttp(msg *data.MessageStuct, sub *data.SubscriptionR
 	}
 	subUrl.RawQuery += appendedQueryStr
 	postFields := map[string]string{"retry_times": strconv.Itoa(int(retryTimes)), "jobid": uniqJobId}
-	msgBody, err = json.Marshal(msg.Body)
+	// TODO: should be detected earlier, why it's not simetimes.
+	if tB, ok :=msg.Body.(map[interface{}]interface{}); ok{
+		msgBody, err = json.Marshal(data.FixMsgpackMap(tB))
+	} else {
+		msgBody, err = json.Marshal(msg.Body)
+	}
 	if err != nil {
 		err = errors.New(fmt.Sprintf("Failed to encode msg body: %v", err))
 		return
