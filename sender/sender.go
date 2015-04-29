@@ -254,6 +254,11 @@ func sendSubscription(sub data.SubscriptionRecord, ch *chan SubSenderRoutineChan
 						// logging failure.
 						if httpStatusCode == 0 {
 							errMsgInSending = fmt.Sprintf("Code: 0\nContent:\n\tFailed to get response: %v", err)
+						} else if httpStatusCode == -1 {
+							// encode body failed
+							errMsgInSending = fmt.Sprintf("not send. failed to encode message body. \nContent:\n\t%+v", msg.Body)
+						} else if httpStatusCode == -2 {
+							errMsgInSending = fmt.Sprintf("not send, failed to parse url. \nContent:\n\t%s", sub.Reception_channel)
 						} else {
 							errMsgInSending = fmt.Sprintf("Code: %v\nContent:\n\t%s", httpStatusCode, returnData)
 						}
@@ -444,6 +449,11 @@ func sendSubscriptionAsRetry(sub data.SubscriptionRecord, ch *chan SubSenderRout
 
 						if httpStatusCode == 0 {
 							errMsgInSending = fmt.Sprintf("Code: 0\nContent:\n\tFailed to get response: %v", sendingErr)
+						} else if httpStatusCode == -1 {
+							// encode body failed
+							errMsgInSending = fmt.Sprintf("not send. failed to encode message body. \nContent:\n\t%+v", msg.Body)
+						} else if httpStatusCode == -2 {
+							errMsgInSending = fmt.Sprintf("not send, failed to parse url. \nContent:\n\t%s", sub.Reception_channel)
 						} else {
 							errMsgInSending = fmt.Sprintf("Code: %v\nContent:\n\t%s", httpStatusCode, returnData)
 						}
@@ -484,6 +494,7 @@ func transferSubscriptionViaHttp(msg *data.MessageStuct, sub *data.SubscriptionR
 	uniqJobId := genUniqueJobId((*msg).Time, (*msg).OriginJobId, (*sub).Subscription_id)
 	subUrl, err = url.Parse(sub.Reception_channel)
 	if err != nil {
+		httpStatusCode = -2
 		err = errors.New(fmt.Sprintf("Failed to parse subscription url: %v : %v", (*sub).Reception_channel, err))
 		return
 	}
@@ -496,12 +507,13 @@ func transferSubscriptionViaHttp(msg *data.MessageStuct, sub *data.SubscriptionR
 	subUrl.RawQuery += appendedQueryStr
 	postFields := map[string]string{"retry_times": strconv.Itoa(int(retryTimes)), "jobid": uniqJobId}
 	// TODO: should be detected earlier, why it's not simetimes.
-	if tB, ok :=msg.Body.(map[interface{}]interface{}); ok{
+	if tB, ok := msg.Body.(map[interface{}]interface{}); ok {
 		msgBody, err = json.Marshal(data.FixMsgpackMap(tB))
 	} else {
 		msgBody, err = json.Marshal(msg.Body)
 	}
 	if err != nil {
+		httpStatusCode = -1
 		err = errors.New(fmt.Sprintf("Failed to encode msg body: %v", err))
 		return
 	}
