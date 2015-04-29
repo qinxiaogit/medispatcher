@@ -5,7 +5,7 @@ const (
 	INTERVAL_OF_RETRY_ON_CONN_FAIL = 3
 
 	// timeout (in seconds) for reserving jog.
-	DEFAULT_RESERVE_TIMEOUT = 2
+	DEFAULT_RESERVE_TIMEOUT = 1
 
 	// maximum routines to redistribute messages from main incoming queue to subscription channel queues.
 	MAX_REDIST_ROUTINES = 10

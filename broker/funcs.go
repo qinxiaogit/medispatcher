@@ -13,7 +13,7 @@ func GetValidBrokers() map[string]BrokerInfo {
 }
 
 // New create a new broker
-//	addr network address, e.g. 127.0.0.1:11300
+// addr network address, e.g. 127.0.0.1:11300
 func New(config Config) (br Broker, err error) {
 	if _, exists := validBrokers[config.Type]; !exists {
 		err = errors.New(Error_InvalidBroker)

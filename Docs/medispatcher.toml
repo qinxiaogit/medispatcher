@@ -1,3 +1,4 @@
+# medispatcher config file. It should be placed to /etc/medispacher.toml
 #TOML v0.2 FORMAT
 DAEMON_USER="www-data"
 
