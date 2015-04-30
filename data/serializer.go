@@ -61,6 +61,13 @@ func FixMsgpackMap(valueI map[interface{}]interface{}) map[string]interface{} {
 	for f, v := range valueI {
 		if reflect.TypeOf(v) == fixType {
 			v = FixMsgpackMap(v.(map[interface{}]interface{}))
+		} else if lItf, ok:= v.([]interface{}); ok{
+			for i, elem := range lItf{
+				if reflect.TypeOf(elem) == fixType{
+					lItf[i] = FixMsgpackMap(elem.(map[interface{}]interface{}))
+				}
+			}
+			v = lItf
 		}
 		value[fmt.Sprintf("%v", f)] = v
 	}
