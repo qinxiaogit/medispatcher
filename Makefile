@@ -7,7 +7,9 @@ zippack: default
 	mv build/medispatcher build/usr/local/sbin/
 	cd build && zip -r -v -9 medispatcher * && rm -rf etc usr
 before-make:
-	mkdir build
+	@if test ! -e build; then\
+		mkdir build;\
+	fi
 
 clean:
 	rm -rf build

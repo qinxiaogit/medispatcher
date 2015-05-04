@@ -1,7 +1,7 @@
 package handlers
 
 import(
-	"medispatcher/rpc/handler"
+	"medispatcher/rpc"
 	"medispatcher/data/cache"
 	"errors"
 	"reflect"
@@ -10,7 +10,7 @@ import(
 type ClearDataCache struct{}
 
 func init(){
-	handler.RegisterHandlerRegister("ClearDataCache", ClearDataCache{})
+	rpc.RegisterHandlerRegister("ClearDataCache", ClearDataCache{})
 }
 
 // Clears caches of data package in process memory.

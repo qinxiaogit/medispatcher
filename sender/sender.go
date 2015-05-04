@@ -48,7 +48,7 @@ func StartAndWait() {
 		if allExited {
 			break
 		} else {
-			time.Sleep(time.Millisecond * 200)
+			time.Sleep(time.Millisecond * 20)
 		}
 	}
 	<-exitChan
@@ -137,6 +137,7 @@ func handleSubscription(sub data.SubscriptionRecord) {
 					default:
 					}
 				}
+				time.Sleep(time.Microsecond * 100)
 			}
 
 			sossr.SetCoCount(0)

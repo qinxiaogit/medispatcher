@@ -8,7 +8,7 @@ import (
 	"io"
 	"medispatcher/config"
 	"medispatcher/logger"
-	"medispatcher/rpc/handler"
+	"medispatcher/rpc"
 	_ "medispatcher/rpc/handlers"
 	"net"
 	"strconv"
@@ -320,7 +320,7 @@ func processRequest(requestData []byte) (re []byte, err error) {
 
 func runRequestHandler(reCh chan ProcessResult, cmd string, args map[string]interface{}) {
 	go sendStats(StatsMessage{cmd, CONNACTION_ACCEPT, CONNACTION_STATUS_OK})
-	re, err := handler.GetContainer().Run(cmd, args)
+	re, err := rpc.GetHandlerContainer().Run(cmd, args)
 	var reB []byte
 	if err == nil {
 		reB, err = json.Marshal(re)
