@@ -22,6 +22,7 @@ func Transfer(addr string, data map[string]string, timeout time.Duration) (httpS
 	req, _ := http.NewRequest("POST", addr, strings.NewReader(reqData.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("User-Agent", "MEDipatcher/2.0.0-alpha")
+	req.Header.Set("Accept", "*/*")
 //	req.Header.Set("Connection", "keep-alive")
 //	req.Header.Set("Keep-Alive", "300")
 	resp, err := client.Do(req)

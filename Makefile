@@ -1,6 +1,6 @@
+BUILD_CMD=CGO_ENABLED=0 go build -installsuffix cgo -a -ldflags "-w" -o build/medispatcher
 default: before-make
-	CGO_ENABLED=0 go build -installsuffix cgo -a -ldflags "-w" -o build/medispatcher
-
+	$(BUILD_CMD)
 zippack: default
 	cp -r Docs/etc build/
 	mkdir -p build/usr/local/sbin/
@@ -10,6 +10,7 @@ before-make:
 	@if test ! -e build; then\
 		mkdir build;\
 	fi
-
+linux: before-make
+	GOOS=linux $(BUILD_CMD)
 clean:
 	rm -rf build

@@ -22,7 +22,7 @@ NAME=jmevent
 DAEMON=/usr/local/sbin/medispatcher
 DAEMON_ARGS=""
 PIDFILE=/var/run/jmevent/jmevent2.0.pid
-SCRIPTNAME=/etc/init.d/jmevent
+SCRIPTNAME=/etc/init.d/jmevent2.0
 
 # Exit if the package is not installed
 [ -x "$DAEMON" ] || exit 0
