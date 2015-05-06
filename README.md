@@ -11,3 +11,22 @@ data logs may hold very important data:
 
 * __RESENT__  _not so important._ message re-sent (to subscriber) logs.
 * __SENT__  _not so important._ message sent (to subscriber for the first time) logs.
+
+## Releases
+### 2.0.0
+First release of v2.    
+
+__Features__    
+
+* Multi-channel, parallel message push by channels. Push of subscriptions will no longer be blocked by other slow message receivers/consumers.
+ 
+ 
+ 
+## Milestone
+
+### 2.1.0
+
+__Feature__    
+
+* Performance parameters can be controlled as to each subscription on the backend control panel.    
+ parameters are: count of concurrent push routines for the subscription, minimum interval between pushes.  
