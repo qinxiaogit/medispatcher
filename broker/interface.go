@@ -22,4 +22,5 @@ type Broker interface {
 	Delete(jobId uint64) (err error)
 	Bury(jobId uint64) (err error)
 	Close()
+	Peek(jobId uint64) (jobData []byte, err error)
 }

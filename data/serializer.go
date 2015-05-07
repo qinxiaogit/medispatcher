@@ -36,8 +36,19 @@ func UnserializeMessage(dataB []byte) (msg MessageStuct, err error) {
 						msgField.SetInt(int64(value.(uint64)))
 					}
 				default:
-					if field == "Body" && reflect.TypeOf(value) == reflect.TypeOf(map[interface{}]interface{}{}) {
-						value = FixMsgpackMap(value.(map[interface{}]interface{}))
+					if field == "Body" {
+						switch value.(type) {
+						case map[interface{}]interface{}:
+							value = FixMsgpackMap(value.(map[interface{}]interface{}))
+						case []interface{}:
+							lItf := value.([]interface{})
+							for i, elem := range lItf {
+								if tElem, ok := elem.(map[interface{}]interface{}); ok {
+									lItf[i] = FixMsgpackMap(tElem)
+								}
+							}
+							value = lItf
+						}
 					}
 					msgField.Set(reflect.ValueOf(value))
 				}
@@ -61,9 +72,9 @@ func FixMsgpackMap(valueI map[interface{}]interface{}) map[string]interface{} {
 	for f, v := range valueI {
 		if reflect.TypeOf(v) == fixType {
 			v = FixMsgpackMap(v.(map[interface{}]interface{}))
-		} else if lItf, ok:= v.([]interface{}); ok{
-			for i, elem := range lItf{
-				if reflect.TypeOf(elem) == fixType{
+		} else if lItf, ok := v.([]interface{}); ok {
+			for i, elem := range lItf {
+				if reflect.TypeOf(elem) == fixType {
 					lItf[i] = FixMsgpackMap(elem.(map[interface{}]interface{}))
 				}
 			}
