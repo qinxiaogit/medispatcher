@@ -35,11 +35,11 @@ func Transfer(addr string, data map[string]string, timeout time.Duration) (httpS
 	buff := make([]byte, buffLen)
 	for {
 		n, e := resp.Body.Read(buff)
-		if e != nil {
-			break
-		}
 		if n > 0 {
 			respData = append(respData, buff[0:n]...)
+		}
+		if e != nil {
+			break
 		}
 	}
 	return
