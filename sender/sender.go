@@ -518,7 +518,7 @@ func transferSubscriptionViaHttp(msg *data.MessageStuct, sub *data.SubscriptionR
 }
 
 func putToRetryChannel(br *broker.Broker, sub *data.SubscriptionRecord, msg *data.MessageStuct, stats *map[string]interface{}) error {
-	delay := math.Pow(float64((*msg).RetryTimes), float64(2)) * float64(config.GetConfig().CoeOfIntervalForRetrySendingMsg)
+	delay := math.Pow(float64((*msg).RetryTimes + 1), float64(2)) * float64(config.GetConfig().CoeOfIntervalForRetrySendingMsg)
 	msgData, err := data.SerializeMessage(*msg)
 	if err != nil {
 		return errors.New(fmt.Sprintf("Failed to serialize msg: %v", err))
