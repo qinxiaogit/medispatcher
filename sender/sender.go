@@ -401,11 +401,11 @@ func sendSubscriptionAsRetry(sub data.SubscriptionRecord, ch *chan SubSenderRout
 					if httpStatusCode == 200 {
 						err = json.Unmarshal(returnData, &respd)
 						if err != nil {
-							logger.GetLogger("WARN").Printf("Subscriber(%s) did not response a valid data on message(%s): %v: %s", sub.Subscriber_id, msg.MsgKey, err, returnData)
+							logger.GetLogger("WARN").Printf("Subscriber(%v) did not response a valid data on message(%v): %v: %s", sub.Subscriber_id, msg.MsgKey, err, returnData)
 						} else {
 							reStatus, exists := respd["status"]
 							if !exists {
-								logger.GetLogger("WARN").Printf("Subscriber(%s)'s response didnot contains the \"status\" field on message().", sub.Subscriber_id, msg.MsgKey)
+								logger.GetLogger("WARN").Printf("Subscriber(%v)'s response didnot contains the \"status\" field on message(%v).", sub.Subscriber_id, msg.MsgKey)
 							} else {
 								sentSuccess = fmt.Sprintf("%v", reStatus) == "1"
 							}
