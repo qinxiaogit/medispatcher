@@ -254,7 +254,7 @@ func sendSubscription(sub data.SubscriptionRecord, ch *chan SubSenderRoutineChan
 					} else {
 						// logging failure.
 						if httpStatusCode == 0 {
-							errMsgInSending = fmt.Sprintf("Code: 0\nContent:\n\tFailed to get response: %v", err)
+							errMsgInSending = fmt.Sprintf("Code: 0\nElapsed:%.3f ms\nContent:\n\tFailed to get response: %v", float64(time.Now().Sub(st).Nanoseconds())/1e6, err)
 						} else if httpStatusCode == -1 {
 							// encode body failed
 							errMsgInSending = fmt.Sprintf("not send. failed to encode message body.\nerr:\n\t%v", err)
@@ -518,7 +518,7 @@ func transferSubscriptionViaHttp(msg *data.MessageStuct, sub *data.SubscriptionR
 }
 
 func putToRetryChannel(br *broker.Broker, sub *data.SubscriptionRecord, msg *data.MessageStuct, stats *map[string]interface{}) error {
-	delay := math.Pow(float64((*msg).RetryTimes + 1), float64(2)) * float64(config.GetConfig().CoeOfIntervalForRetrySendingMsg)
+	delay := math.Pow(float64((*msg).RetryTimes+1), float64(2)) * float64(config.GetConfig().CoeOfIntervalForRetrySendingMsg)
 	msgData, err := data.SerializeMessage(*msg)
 	if err != nil {
 		return errors.New(fmt.Sprintf("Failed to serialize msg: %v", err))
