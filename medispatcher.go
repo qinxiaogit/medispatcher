@@ -25,6 +25,13 @@ func main() {
 		fmt.Printf("Failed to setup configs: %v", err)
 		os.Exit(1)
 	}
+
+	maxProcs := runtime.NumCPU()
+	if maxProcs > 1 {
+		maxProcs -= 1
+	}
+	runtime.GOMAXPROCS(maxProcs)
+
 	logger.InitDefaultLogger()
 
 	go ProcessSysSignal()
@@ -38,6 +45,7 @@ func main() {
 // 系统信号处理
 func ProcessSysSignal() {
 	var exitSigSent bool
+	var exitSigSentLock = make(chan bool, 1)
 	// 系统信号监控通道
 	osSingalChan := make(chan os.Signal, 10)
 
@@ -51,11 +59,14 @@ func ProcessSysSignal() {
 		go func(sig *os.Signal) {
 			switch *sig {
 			case syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT:
+				exitSigSentLock <- true
 				if !exitSigSent {
 					logger.GetLogger("INFO").Print("Quit signal received! exit...\n")
 					exitSigSent = true
+					<-exitSigSentLock
 				} else {
 					logger.GetLogger("INFO").Print("Quit signal already sent! ignore...\n")
+					<-exitSigSentLock
 					return
 				}
 				workerExitSigChan := make(chan string)

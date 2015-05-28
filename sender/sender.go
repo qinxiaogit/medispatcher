@@ -23,24 +23,22 @@ func StartAndWait() {
 		if err != nil {
 			logger.GetLogger("WARN").Printf("Failed to get subscriptions: %v", err)
 		} else {
-			getSenderRoutineStatsRWLock()
 			for _, sub := range subscriptions {
-				_, exists := senderRoutineStatus[sub.Subscription_id]
-				if !exists {
+				if !senderRoutineStats.statusExists(sub.Subscription_id) {
 					go handleSubscription(sub)
 				}
 			}
-			releaseSenderRoutineStatsRWLock()
 		}
 		time.Sleep(time.Second * 1)
 	}
 	// exit
-	for _, status := range senderRoutineStatus {
+	for _, status := range senderRoutineStats.routineStatus {
 		(*status).sigChan <- SENDER_ROUTINE_SIG_EXIT_ALL_ROUTINES
 	}
+
 	for {
 		allExited := true
-		for _, status := range senderRoutineStatus {
+		for _, status := range senderRoutineStats.routineStatus {
 			if !status.Exited() {
 				allExited = false
 			}
@@ -56,45 +54,71 @@ func StartAndWait() {
 
 // handel a subscription.
 func handleSubscription(sub data.SubscriptionRecord) {
+	subParams := &SubscriptionParams{}
+	err := subParams.Load(sub.Subscription_id)
 
+	if err != nil {
+		logger.GetLogger("INFO").Printf("Failed to load subscription params: %v, ignore customized subscription performance params.", err)
+	}
+
+	if err != nil || subParams.Concurrency > config.GetConfig().MaxSendersPerChannel {
+		subParams.Concurrency = config.GetConfig().SendersPerChannel
+	}
+
+	if err != nil || subParams.ConcurrencyOfRetry > config.GetConfig().MaxSendersPerRetryChannel {
+		subParams.ConcurrencyOfRetry = config.GetConfig().SendersPerRetryChannel
+	}
+
+	sossrLock := make(chan int8, 1)
 	sossr := StatusOfSubSenderRoutine{
 		subscription:   &sub,
 		coCount:        0,
 		coCountOfRetry: 0,
 		sigChan:        make(chan SubSenderRoutineChanSig, 1),
+		subParams:      subParams,
+		rwLock:         &sossrLock,
 	}
-
+	senderRoutineStats.addStatus(sub.Subscription_id, &sossr)
 	senderRoutineSigChans := []*chan SubSenderRoutineChanSig{}
 	senderRoutineOfRetrySigChans := []*chan SubSenderRoutineChanSig{}
-	for i := uint16(0); i < config.GetConfig().SendersPerChannel; i++ {
+	for i := uint16(0); i < subParams.Concurrency; i++ {
 		ch := make(chan SubSenderRoutineChanSig, 1)
-		go sendSubscription(sub, &ch)
+		go sendSubscription(sub, &sossr, &ch)
 		senderRoutineSigChans = append(senderRoutineSigChans, &ch)
-		sossr.coCount += int32(1)
+		sossr.IncreaseCoCount(1)
 	}
 
-	for i := uint16(0); i < config.GetConfig().SendersPerRetryChannel; i++ {
+	for i := uint16(0); i < subParams.ConcurrencyOfRetry; i++ {
 		ch := make(chan SubSenderRoutineChanSig, 1)
-		go sendSubscriptionAsRetry(sub, &ch)
+		go sendSubscriptionAsRetry(sub, &sossr, &ch)
 		senderRoutineOfRetrySigChans = append(senderRoutineOfRetrySigChans, &ch)
-		sossr.coCountOfRetry += int32(1)
+		sossr.InCoCountOfRetry(1)
 	}
-	getSenderRoutineStatsRWLock()
-	senderRoutineStatus[sub.Subscription_id] = &sossr
-	releaseSenderRoutineStatsRWLock()
+
+	senderRoutineStats.setStatus(sub.Subscription_id, &sossr)
 	// wait for management signals.
 	for {
 		sig := <-sossr.sigChan
 		switch sig {
 		case SENDER_ROUTINE_SIG_INCREASE_ROUTINE:
-			ch := make(chan SubSenderRoutineChanSig)
+			ch := make(chan SubSenderRoutineChanSig, 1)
 			senderRoutineSigChans = append(senderRoutineSigChans, &ch)
-			go sendSubscription(sub, &ch)
+			go sendSubscription(sub, &sossr, &ch)
 			sossr.IncreaseCoCount(1)
 		case SENDER_ROUTINE_SIG_DECREASE_ROUTINE:
 			if len(senderRoutineSigChans) > 0 {
-				*senderRoutineSigChans[0] <- SENDER_ROUTINE_SIG_EXIT
-				<-*senderRoutineSigChans[0]
+				select {
+				// in case the routine has already exited abnormally
+				case abnormalSig := <-*senderRoutineSigChans[0]:
+					if abnormalSig == SENDER_ROUTINE_SIG_EXITED_ABNORMALLY {
+					}
+				default:
+					*senderRoutineSigChans[0] <- SENDER_ROUTINE_SIG_EXIT
+					// test if the routine received the signal and should exit.
+					*senderRoutineSigChans[0] <- SENDER_ROUTINE_SIG_EXITED
+				}
+
+				close(*senderRoutineSigChans[0])
 				if len(senderRoutineSigChans) > 1 {
 					senderRoutineSigChans = senderRoutineSigChans[1:]
 				} else {
@@ -109,7 +133,8 @@ func handleSubscription(sub data.SubscriptionRecord) {
 			for _, ch := range allSigChans {
 				select {
 				case sig := <-*ch:
-					if sig != SENDER_ROUTINE_SIG_EXITED {
+					close(*ch)
+					if sig != SENDER_ROUTINE_SIG_EXITED_ABNORMALLY {
 						tempChans = append(tempChans, ch)
 					}
 				default:
@@ -131,22 +156,34 @@ func handleSubscription(sub data.SubscriptionRecord) {
 						continue
 					}
 					select {
-					case *ch <- 0:
+					// test if the routine received the signal and should exit.
+					case *ch <- SENDER_ROUTINE_SIG_EXITED:
+						close(*ch)
 						exitedCo += 1
 						exitedM[index] = true
 					default:
 					}
 				}
-				time.Sleep(time.Microsecond * 100)
+				time.Sleep(time.Microsecond * 1000)
 			}
 
 			sossr.SetCoCount(0)
 			sossr.SetCoCountOfRetry(0)
 			sossr.SetExited()
 		case SENDER_ROUTINE_SIG_DECREASE_ROUTINE_FOR_RETRY:
-			if len(senderRoutineSigChans) > 0 {
-				*senderRoutineOfRetrySigChans[0] <- SENDER_ROUTINE_SIG_EXIT
-				<-*senderRoutineSigChans[0]
+			if len(senderRoutineOfRetrySigChans) > 0 {
+				select {
+				// in case the routine has already exited abnormally
+				case abnormalSig := <-*senderRoutineOfRetrySigChans[0]:
+					if abnormalSig == SENDER_ROUTINE_SIG_EXITED_ABNORMALLY {
+					}
+				default:
+					*senderRoutineOfRetrySigChans[0] <- SENDER_ROUTINE_SIG_EXIT
+					// test if the routine received the signal and should exit.
+					*senderRoutineOfRetrySigChans[0] <- SENDER_ROUTINE_SIG_EXITED
+				}
+
+				close(*senderRoutineOfRetrySigChans[0])
 				if len(senderRoutineOfRetrySigChans) > 1 {
 					senderRoutineOfRetrySigChans = senderRoutineOfRetrySigChans[1:]
 				} else {
@@ -155,20 +192,20 @@ func handleSubscription(sub data.SubscriptionRecord) {
 				sossr.DecreaseCoCountOfRetry(1)
 			}
 		case SENDER_ROUTINE_SIG_INCREASE_ROUTINE_FOR_RETRY:
-			ch := make(chan SubSenderRoutineChanSig)
+			ch := make(chan SubSenderRoutineChanSig, 1)
 			senderRoutineOfRetrySigChans = append(senderRoutineOfRetrySigChans, &ch)
-			go sendSubscriptionAsRetry(sub, &ch)
+			go sendSubscriptionAsRetry(sub, &sossr, &ch)
 			sossr.InCoCountOfRetry(1)
 		}
 	}
 }
 
-func sendSubscription(sub data.SubscriptionRecord, ch *chan SubSenderRoutineChanSig) {
+func sendSubscription(sub data.SubscriptionRecord, sossr *StatusOfSubSenderRoutine, ch *chan SubSenderRoutineChanSig) {
 	defer func() {
 		err := recover()
 		if err != nil {
 			logger.GetLogger("ERROR").Printf("sender routine exiting abnormally: %v", err)
-			*ch <- SENDER_ROUTINE_SIG_EXITED
+			*ch <- SENDER_ROUTINE_SIG_EXITED_ABNORMALLY
 		}
 	}()
 	var (
@@ -280,12 +317,13 @@ func sendSubscription(sub data.SubscriptionRecord, ch *chan SubSenderRoutineChan
 						if err != nil || msg.LogId < 1 {
 							if err != nil {
 								logger.GetLogger("WARN").Printf("Failed to stats job when puting to retry channel: %v", err)
+							} else {
+								br.Release(jobId, jobStats["pri"].(uint32), 1)
 							}
 							if msg.LogId < 1 {
 								logger.GetLogger("WARN").Print("Failed to log job when puting to retry channel.")
 							}
 
-							br.Release(jobId, jobStats["pri"].(uint32), 1)
 						} else {
 							err = putToRetryChannel(brPt, &sub, &msg, &jobStats)
 							if err != nil {
@@ -310,9 +348,14 @@ func sendSubscription(sub data.SubscriptionRecord, ch *chan SubSenderRoutineChan
 						)
 					}
 					elapsed := time.Now().Sub(timerOfSendingInterval)
-					minInterval := time.Millisecond * time.Duration(config.GetConfig().IntervalOfSendingForSendRoutine)
-					if elapsed < minInterval {
-						time.Sleep(minInterval - elapsed)
+
+					minInterval := sossr.GetSubParams().IntervalOfSending
+					if minInterval <= 0 {
+						minInterval = config.GetConfig().IntervalOfSendingForSendRoutine
+					}
+					minDu := time.Millisecond * time.Duration(minInterval)
+					if elapsed < minDu {
+						time.Sleep(minDu - elapsed)
 					}
 				}
 			}
@@ -320,12 +363,12 @@ func sendSubscription(sub data.SubscriptionRecord, ch *chan SubSenderRoutineChan
 	}
 }
 
-func sendSubscriptionAsRetry(sub data.SubscriptionRecord, ch *chan SubSenderRoutineChanSig) {
+func sendSubscriptionAsRetry(sub data.SubscriptionRecord, sossr *StatusOfSubSenderRoutine, ch *chan SubSenderRoutineChanSig) {
 	defer func() {
 		err := recover()
 		if err != nil {
 			logger.GetLogger("ERROR").Printf("sender routine for retry-channel exiting abnormally: %v", err)
-			*ch <- SENDER_ROUTINE_SIG_EXITED
+			*ch <- SENDER_ROUTINE_SIG_EXITED_ABNORMALLY
 		}
 	}()
 	var (
@@ -434,7 +477,6 @@ func sendSubscriptionAsRetry(sub data.SubscriptionRecord, ch *chan SubSenderRout
 						broker.NormalizeJobStats(&jobStats)
 						if err != nil {
 							logger.GetLogger("WARN").Printf("Failed to stats job when puting to retry channel: %v", err)
-							br.Release(jobId, jobStats["pri"].(uint32), 1)
 						} else {
 							err = putToRetryChannel(brPt, &sub, &msg, &jobStats)
 							if err != nil {
@@ -481,9 +523,13 @@ func sendSubscriptionAsRetry(sub data.SubscriptionRecord, ch *chan SubSenderRout
 			}
 
 			elapsed := time.Now().Sub(timerOfSendingInterval)
-			minInterval := time.Millisecond * time.Duration(config.GetConfig().IntervalOfSendingForSendRoutineOfRetry)
-			if elapsed < minInterval {
-				time.Sleep(minInterval - elapsed)
+			minInterval := sossr.GetSubParams().IntervalOfSending
+			if minInterval <= 0 {
+				minInterval = config.GetConfig().IntervalOfSendingForSendRoutine
+			}
+			minDu := time.Millisecond * time.Duration(minInterval)
+			if elapsed < minDu {
+				time.Sleep(minDu - elapsed)
 			}
 		}
 	}

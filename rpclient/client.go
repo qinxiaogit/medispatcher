@@ -100,3 +100,7 @@ func New(addr string) (*Client, error) {
 	}
 	return c, nil
 }
+
+func (c *Client)Close()error{
+	return (*c).conn.Close()
+}

@@ -73,5 +73,17 @@ func Setup() error {
 	if err != nil {
 		return errors.New(fmt.Sprintf("Failed to change log dir owner: %s", err))
 	}
+
+	if !util.FileExists(config.DATA_DIR) {
+		err = os.MkdirAll(config.DATA_DIR, 0755)
+		if err != nil {
+			return errors.New(fmt.Sprintf("Failed to initialize data dir[%s]: %s", config.DATA_DIR, err))
+		}
+	}
+
+	err = util.Rchown(config.DATA_DIR, daemonUid, daemonGid)
+	if err != nil {
+		return errors.New(fmt.Sprintf("Failed to change data dir owner: %s", err))
+	}
 	return nil
 }

@@ -11,11 +11,10 @@ import (
 	"sort"
 	"strconv"
 	"time"
+	"sync"
 )
 
 type ConnAction int8
-
-type ConnActionStatus int8
 
 func (_ ConnAction) String() {
 
@@ -33,20 +32,7 @@ const (
 	CONNACTION_STATUS_FAILED = ConnActionStatus(1)
 )
 
-type StatsMessage struct {
-	cmd    string
-	action ConnAction
-	status ConnActionStatus
-}
-
-type Stats struct {
-	TotalReq    int
-	FinishedReq int
-	FailedReq   int
-}
-
-var statsSegs = map[int64]*map[string]*Stats{}
-var currentSegIndex int64
+var statsSegs = StatsSegs{lock:&sync.Mutex{} ,segs: map[int64]map[string]Stats{}}
 
 var statsInChanRWLock = make(chan int, 1)
 var statsInChan = make(chan StatsMessage, 100)
@@ -59,60 +45,38 @@ func releaseStatsRWLock() {
 	<-statsInChanRWLock
 }
 
+func getCurrentLogSegIndex()int64{
+	index := time.Now().Unix()
+	index = index - index%60
+	return index
+}
 // 按分钟分段记录请求统计数据
 func receiveStats() {
-	calIndex := func() int64 {
-		index := time.Now().Unix()
-		index = index - index%60
-		return index
-	}
-
 	go gcStats()
-
-	currentSegIndex = calIndex()
-
-	go func(cal func() int64) {
-		for {
-			time.Sleep(time.Second * 2)
-			currentSegIndex = cal()
-		}
-	}(calIndex)
-
+	var currentSegIndex int64
 	for {
 		cStats := <-statsInChan
+		currentSegIndex = getCurrentLogSegIndex()
 		if cStats.action != CONNACTION_PROCESS_FIN {
 			continue
 		}
-		newStatsSeg, exists := statsSegs[currentSegIndex]
-		if !exists {
-			newStatsSeg = &map[string]*Stats{}
-		}
-		newStats, exists := (*newStatsSeg)[cStats.cmd]
-		if !exists {
-			newStats = &Stats{0, 0, 0}
-		}
-		(*newStats).TotalReq += 1
-		if cStats.status == CONNACTION_STATUS_OK {
-			(*newStats).FinishedReq += 1
-		} else {
-			(*newStats).FailedReq += 1
-		}
-		(*newStatsSeg)[cStats.cmd] = newStats
-		statsSegs[currentSegIndex] = newStatsSeg
+		statsSegs.AddStats(currentSegIndex, &cStats)
 	}
 }
 
 func gcStats() {
+	var currentSegIndex int64
 	for {
 		time.Sleep(GC_IN_MEM_STATS_INTERVAL)
-		statsSegLength := len(statsSegs)
+		currentSegIndex = getCurrentLogSegIndex()
+		statsSegLength := statsSegs.SegLen()
 		delRangeLength := statsSegLength - MAX_IN_MEM_STATS_LENGTH*24*60
 		if delRangeLength < 1 {
 			continue
 		}
 		for i := 1; delRangeLength-i >= 0; i++ {
 			indexForDel := currentSegIndex - int64((MAX_IN_MEM_STATS_LENGTH*24+i)*60)
-			delete(statsSegs, indexForDel)
+			statsSegs.DeleteSeg(indexForDel)
 		}
 	}
 }
@@ -184,7 +148,8 @@ func startConsole() {
 // 向控制台统计数据
 //	compressed 发送压缩后的统计数据
 func sendStatsToConsole(conn *net.Conn, compressed bool) {
-	rf := reflect.ValueOf(statsSegs)
+	curStatsSegs := statsSegs.GetSegs()
+	rf := reflect.ValueOf(curStatsSegs)
 	keys := rf.MapKeys()
 	keysInt := []int{}
 	for _, v := range keys {
@@ -199,8 +164,8 @@ func sendStatsToConsole(conn *net.Conn, compressed bool) {
 		for _, indexInt := range keysInt {
 			index := int64(indexInt)
 			(*conn).Write([]byte(time.Unix(index, 0).Format(time.RFC3339) + "\n"))
-			stats := statsSegs[index]
-			re, err := json.MarshalIndent(*stats, "", "")
+			stats := curStatsSegs[index]
+			re, err := json.MarshalIndent(stats, "", "")
 			if err != nil {
 				(*conn).Write([]byte(fmt.Sprintf("Failed to format stats: %s\n", err)))
 			} else {
@@ -227,7 +192,7 @@ func sendStatsToConsole(conn *net.Conn, compressed bool) {
 				return
 			}
 
-			re, err := json.Marshal(*(statsSegs[int64(indexInt)]))
+			re, err := json.Marshal(curStatsSegs[int64(indexInt)])
 			if err != nil {
 				return
 			}

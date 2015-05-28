@@ -26,9 +26,6 @@ SendersPerRetryChannel=2
 # (正常队列上)每个订阅单线程上最小推送间隔时间。
 IntervalOfSendingForSendRoutine=10
 
-# (重试队列上)每个订阅单线程上最小推送间隔时间。
-IntervalOfSendingForSendRoutineOfRetry=10
-
 # 重试延时参数. 值越大，下一次推送时间滞后越大.
 # interval = pow(retryTimes+1, 2)*CoeOfIntervalForRetrySendingMsg
 CoeOfIntervalForRetrySendingMsg=1

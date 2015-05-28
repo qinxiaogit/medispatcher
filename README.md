@@ -15,8 +15,7 @@ data logs may hold very important data:
 ## Releases
 ### 2.0.0
 First release of v2.    
-
-__Features__    
+#### Features    
 
 * Multi-channel, parallel message push by channels. Push of subscriptions will no longer be blocked by other slow message receivers/consumers.
  
@@ -25,8 +24,12 @@ __Features__
 ## Milestone
 
 ### 2.1.0
-
-__Feature__    
+####Features    
 
 * Performance parameters can be controlled as to each subscription on the backend control panel.    
- parameters are: count of concurrent push routines for the subscription, minimum interval between pushes.  
+ parameters are: count of concurrent push routines for the subscription, count of concurrent retry-push routines for the subscription, minimum interval between pushes.
+ 
+### 2.1.1
+####Features
+
+* Messages sent/received statistics

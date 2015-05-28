@@ -1,5 +1,11 @@
 package sender
 
+import (
+	"errors"
+	"fmt"
+	"medispatcher/logger"
+)
+
 // Stop stops the senders.
 func Stop(returnCh *chan string) {
 	// wait for the exit signal to be checked. taken by shouldExit
@@ -25,10 +31,62 @@ func shouldExit() bool {
 	return r
 }
 
-func getSenderRoutineStatsRWLock() {
-	senderRoutineStatusRWLock <- 1
-}
+// SetSubscriptionParams changes the params that affects the sender routine performances.
+// This function is not go-routine safe. The invoker should implement go-routine safe calls.
+func SetSubscriptionParams(subscriptionId int32, param SubscriptionParams) error {
+	if !senderRoutineStats.statusExists(subscriptionId) {
+		return errors.New(fmt.Sprintf("Routine for handling subscription(%v) not exists.", subscriptionId))
+	}
+	routineStatus := senderRoutineStats.getStatus(subscriptionId)
+	if routineStatus == nil {
+		return errors.New(fmt.Sprintf("Failed to get routine status for subscription(%v).", subscriptionId))
+	}
+	routineStatus.lock()
+	var (
+		coCount        = routineStatus.coCount
+		coCountOfRetry = routineStatus.coCountOfRetry
+	)
+	routineStatus.unlock()
 
-func releaseSenderRoutineStatsRWLock() {
-	<-senderRoutineStatusRWLock
+	var sig SubSenderRoutineChanSig
+	if param.Concurrency != coCount {
+		var diff uint16
+		if param.Concurrency > coCount {
+			sig = SENDER_ROUTINE_SIG_INCREASE_ROUTINE
+			diff = param.Concurrency - coCount
+		} else {
+			sig = SENDER_ROUTINE_SIG_DECREASE_ROUTINE
+			diff = coCount - param.Concurrency
+		}
+
+		for ; diff > 0; diff-- {
+			routineStatus.sigChan <- sig
+		}
+		routineStatus.SetSubParam("Concurrency", param.Concurrency)
+	}
+
+	if param.ConcurrencyOfRetry != coCountOfRetry {
+		var diff uint16
+		if param.ConcurrencyOfRetry > coCountOfRetry {
+			sig = SENDER_ROUTINE_SIG_INCREASE_ROUTINE_FOR_RETRY
+			diff = param.ConcurrencyOfRetry - coCountOfRetry
+		} else {
+			sig = SENDER_ROUTINE_SIG_DECREASE_ROUTINE_FOR_RETRY
+			diff = coCountOfRetry - param.ConcurrencyOfRetry
+		}
+
+		for ; diff > 0; diff-- {
+			routineStatus.sigChan <- sig
+		}
+		routineStatus.SetSubParam("ConcurrencyOfRetry", param.ConcurrencyOfRetry)
+	}
+	err := routineStatus.SetSubParam("IntervalOfSending", param.IntervalOfSending)
+	if err != nil {
+		return err
+	}
+	err = routineStatus.subParams.Store(subscriptionId)
+	if err != nil {
+		logger.GetLogger("WARN").Printf("Failed to save subscription params for subscription: %v: %v", subscriptionId, err)
+	}
+	return nil
 }

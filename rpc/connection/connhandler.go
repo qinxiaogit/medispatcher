@@ -32,12 +32,43 @@ var masterCommCh = make(chan int, 1)
 var readConnCountCh = make(chan int, 1)
 var stoppingLocalServer = false
 var localServerStoppingStateQueryLock = make(chan int, 1)
+var sso *StoppingSigalOp
 
 var errMsgOutOfMaxConn = fmt.Sprintf("Too many connections, out of %d.\n", config.MAX_CONNECTIONS)
 
-type ProcessResult struct {
-	Result []byte
-	Error  error
+func init() {
+	ssoLockChan := make(chan bool, 1)
+	sso = &StoppingSigalOp{lockChan: &ssoLockChan, stoppingSigal: make(chan bool, 100)}
+}
+
+func (sso *StoppingSigalOp) lock() {
+	*sso.lockChan <- true
+}
+
+func (sso *StoppingSigalOp) unlock() {
+	<-*sso.lockChan
+}
+
+// Use adds an reference count of the stopping signal.
+func (sso *StoppingSigalOp) Use() {
+	sso.lock()
+	defer sso.unlock()
+	sso.userCounter += 1
+}
+
+// Unuse minus an reference count of the stopping signal.
+func (sso *StoppingSigalOp) Unuse() {
+	sso.lock()
+	defer sso.unlock()
+	sso.userCounter -= 1
+}
+
+func (sso *StoppingSigalOp) SendSignal() {
+	sso.lock()
+	defer sso.unlock()
+	for c := sso.userCounter; c > 0; c-- {
+		sso.stoppingSigal <- true
+	}
 }
 
 // status: 不超过8字节
@@ -73,12 +104,19 @@ func parseHeadTagLength(tag []byte) []byte {
 	return headerLength
 }
 
-func readRequest(conn *net.Conn) (body []byte, err error, closed bool) {
-	headerTag := make([]byte, HEAD_TAG_LENGTH)
-
-	start := 0
+func readRequest(conn *net.Conn, dataChan chan *Request) {
 	var count int
-	var headComplete bool
+	var err error
+	var headComplete, closed bool
+	headerTag := make([]byte, HEAD_TAG_LENGTH)
+	result := &Request{}
+	defer func() {
+		result.Err = err
+		result.Closed = closed
+		dataChan <- result
+	}()
+	start := 0
+
 	for start < HEAD_TAG_LENGTH {
 		if start == 0 {
 			// 设置客户端空闲超时
@@ -121,11 +159,11 @@ func readRequest(conn *net.Conn) (body []byte, err error, closed bool) {
 		err = errors.New("数据长度小于1.")
 		return
 	}
-	body = make([]byte, bodyLength)
+	result.Body = make([]byte, bodyLength)
 	start = 0
 	for start < bodyLength {
 		(*conn).SetReadDeadline(time.Now().Add(config.CLIENT_TIMEOUT))
-		count, err = (*conn).Read(body[start:])
+		count, err = (*conn).Read(result.Body[start:])
 		if err != nil {
 			if err != io.EOF && start < bodyLength-1 {
 				err = errors.New(fmt.Sprint("client data read premature"))
@@ -237,29 +275,43 @@ func HandleConn(conn *net.Conn) {
 		counterCh <- int32(-1)
 	}()
 
-	for !isServerStopping() {
-		requestData, err, closed := readRequest(conn)
-		if closed {
+	if isServerStopping() {
+		return
+	}
+	sso.Use()
+	requestDataChan := make(chan *Request)
+	go readRequest(conn, requestDataChan)
+	for {
+		select {
+		case <-sso.stoppingSigal:
 			return
-		}
-		if err != nil {
-			logger.GetLogger("ERROR").Printf("Client data read error: %s", err)
-			return
-		}
+		case request := <-requestDataChan:
+			if request.Closed {
+				sso.Unuse()
+				return
+			}
+			if request.Err != nil {
+				logger.GetLogger("ERROR").Printf("Client data read error: %s", request.Err)
+				sso.Unuse()
+				return
+			}
 
-		var re []byte
-		re, err = processRequest(requestData)
-		var status string
-		if err == nil {
-			status = "ok"
-		} else {
-			status = "failed"
-			re, _ = json.Marshal(err.Error())
-		}
-		err = response(conn, status, re)
-		if err != nil {
-			logger.GetLogger("ERROR").Printf("Response write error: %s\n", err)
-			return
+			re, err := processRequest(request.Body)
+			var status string
+			if err == nil {
+				status = "ok"
+			} else {
+				status = "failed"
+				re, _ = json.Marshal(err.Error())
+			}
+			err = response(conn, status, re)
+			if err != nil {
+				logger.GetLogger("ERROR").Printf("Response write error: %s\n", err)
+				sso.Unuse()
+				return
+			} else {
+				go readRequest(conn, requestDataChan)
+			}
 		}
 	}
 }

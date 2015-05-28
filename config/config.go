@@ -6,6 +6,7 @@ type Config struct {
 	InstallDir string
 	PidFile    string
 	LOG_DIR    string
+	DATA_DIR   string
 
 	QueueServerType      string
 	QueueServerAddr      string
@@ -32,14 +33,15 @@ type Config struct {
 
 	ListenersOfMainQueue uint16
 
+	MaxSendersPerChannel uint16
+
 	SendersPerChannel uint16
 	// In milliseconds
 	IntervalOfSendingForSendRoutine uint16
 
-	SendersPerRetryChannel uint16
+	MaxSendersPerRetryChannel uint16
 
-	// In milliseconds
-	IntervalOfSendingForSendRoutineOfRetry uint16
+	SendersPerRetryChannel uint16
 
 	// interval = pow(retryTimes+1, 2)*CoeOfIntervalForRetrySendingMsg
 	CoeOfIntervalForRetrySendingMsg uint16
@@ -60,11 +62,13 @@ var config = &Config{
 	QueueServerAddr:                        "127.0.0.1:11300",
 	ListenersOfMainQueue:                   uint16(1),
 	SendersPerChannel:                      uint16(1),
+	MaxSendersPerChannel:                   uint16(10),
 	IntervalOfSendingForSendRoutine:        uint16(1),
 	SendersPerRetryChannel:                 uint16(1),
-	IntervalOfSendingForSendRoutineOfRetry: uint16(1),
-	CoeOfIntervalForRetrySendingMsg:        uint16(30),
+	MaxSendersPerRetryChannel:              uint16(10),
+	CoeOfIntervalForRetrySendingMsg:        uint16(10),
 	EnableMsgSentLog:                       true,
 	MaxRetryTimesOfSendingMessage:          uint16(10),
 	MsgQueueFaultToleranceListNamePrefix:   "mec_list_of_msg_for_restore_to_queue_server:",
+	DATA_DIR: "/var/lib/medispatcher/",
 }

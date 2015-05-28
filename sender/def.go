@@ -14,6 +14,7 @@ const (
 	SENDER_ROUTINE_SIG_DECREASE_ROUTINE           = SubSenderRoutineChanSig(2)
 	SENDER_ROUTINE_SIG_EXIT_ALL_ROUTINES          = SubSenderRoutineChanSig(3)
 	SENDER_ROUTINE_SIG_EXIT                       = SubSenderRoutineChanSig(10)
+	SENDER_ROUTINE_SIG_EXITED_ABNORMALLY          = SubSenderRoutineChanSig(12)
 	SENDER_ROUTINE_SIG_EXITED                     = SubSenderRoutineChanSig(11)
 	SENDER_ROUTINE_SIG_INCREASE_ROUTINE_FOR_RETRY = SubSenderRoutineChanSig(4)
 	SENDER_ROUTINE_SIG_DECREASE_ROUTINE_FOR_RETRY = SubSenderRoutineChanSig(5)
@@ -24,6 +25,4 @@ const (
 	DEFAULT_RESERVE_TIMEOUT        = 1
 )
 
-var senderRoutineStatus = map[int32]*StatusOfSubSenderRoutine{}
-
-var senderRoutineStatusRWLock = make(chan int8, 1)
+var senderRoutineStats = &SenderRoutineStats{routineStatus: map[int32]*StatusOfSubSenderRoutine{}}

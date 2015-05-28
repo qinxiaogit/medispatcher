@@ -1,36 +1,36 @@
 package handlers
 
-import(
-	"medispatcher/rpc"
-	"medispatcher/data/cache"
+import (
 	"errors"
+	"medispatcher/data/cache"
+	"medispatcher/rpc"
 	"reflect"
 )
 
 type ClearDataCache struct{}
 
-func init(){
+func init() {
 	rpc.RegisterHandlerRegister("ClearDataCache", ClearDataCache{})
 }
 
 // Clears caches of data package in process memory.
-// args  cache key prefixes.
-func (_ ClearDataCache)Process(args map[string]interface{})(interface{}, error){
+// args  cache key prefixes. e.g. ["model1:", "model2:"]
+func (_ ClearDataCache) Process(args map[string]interface{}) (interface{}, error) {
 	if len(args) < 1 {
-		return cache.Flush(),nil
+		return cache.Flush(), nil
 	} else {
 		var prefixes []string
 		var ok bool
 		var tPre []interface{}
 		var tPreS string
-		for _, i:= range args {
+		for _, i := range args {
 			tPre, ok = i.([]interface{})
-			if !ok{
-			   return nil, errors.New("prefixes '"+reflect.TypeOf(i).String()+"' is not type interface list.")
+			if !ok {
+				return nil, errors.New("prefixes '" + reflect.TypeOf(i).String() + "' is not type interface list.")
 			}
-			for _, i:=range tPre {
-				tPreS, ok= i.(string)
-				if !ok{
+			for _, i := range tPre {
+				tPreS, ok = i.(string)
+				if !ok {
 					return nil, errors.New("prefix is not a string.")
 				} else {
 					prefixes = append(prefixes, tPreS)
