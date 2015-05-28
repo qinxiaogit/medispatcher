@@ -67,7 +67,9 @@ func SetSubscriptionParams(subscriptionId int32, param SubscriptionParams) error
 		}
 
 		for ; diff > 0; diff-- {
-			routineStatus.sigChan <- sig
+			go func(ch *chan SubSenderRoutineChanSig, sig SubSenderRoutineChanSig){
+				*ch <- sig
+			}(&routineStatus.sigChan, sig)
 		}
 		routineStatus.SetSubParam("Concurrency", param.Concurrency)
 	}
@@ -83,7 +85,9 @@ func SetSubscriptionParams(subscriptionId int32, param SubscriptionParams) error
 		}
 
 		for ; diff > 0; diff-- {
-			routineStatus.sigChan <- sig
+			go func(ch *chan SubSenderRoutineChanSig, sig SubSenderRoutineChanSig){
+				*ch <- sig
+			}(&routineStatus.sigChan, sig)
 		}
 		routineStatus.SetSubParam("ConcurrencyOfRetry", param.ConcurrencyOfRetry)
 	}

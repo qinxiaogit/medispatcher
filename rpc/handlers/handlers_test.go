@@ -38,7 +38,7 @@ func TestSetSubscriptionParams(t *testing.T) {
 		var re interface{}
 		re, err = c.Call("SetSubscriptionParams", map[string]interface{}{
 			"SubscriptionId": 382,
-			"Params":         map[string]interface{}{"Concurrency": 0, "ConcurrencyOfRetry": 30, "IntervalOfSending": 12},
+			"Params":         map[string]interface{}{"Concurrency": 0, "ConcurrencyOfRetry": 0, "IntervalOfSending": 12},
 		})
 		t.Log(re)
 	}
