@@ -274,6 +274,7 @@ func sendSubscription(sub data.SubscriptionRecord, sossr *StatusOfSubSenderRouti
 					br.Bury(jobId)
 				} else {
 					sentSuccess = false
+					sub.Timeout = sossr.GetSubParams().ProcessTimeout
 					st := time.Now()
 					httpStatusCode, returnData, err = transferSubscriptionViaHttp(&msg, &sub, 0)
 					et := time.Now()
@@ -442,6 +443,7 @@ func sendSubscriptionAsRetry(sub data.SubscriptionRecord, sossr *StatusOfSubSend
 				} else {
 					msg.RetryTimes += 1
 					sentSuccess = false
+					sub.Timeout = sossr.GetSubParams().ProcessTimeout
 					st := time.Now()
 					httpStatusCode, returnData, sendingErr = transferSubscriptionViaHttp(&msg, &sub, msg.RetryTimes)
 					et := time.Now()
@@ -564,7 +566,7 @@ func transferSubscriptionViaHttp(msg *data.MessageStuct, sub *data.SubscriptionR
 		return
 	}
 	postFields["message"] = string(msgBody)
-	return httproxy.Transfer(subUrl.String(), postFields, time.Second*time.Duration((*sub).Timeout))
+	return httproxy.Transfer(subUrl.String(), postFields, time.Millisecond*time.Duration((*sub).Timeout))
 }
 
 func putToRetryChannel(br *broker.Broker, sub *data.SubscriptionRecord, msg *data.MessageStuct, stats *map[string]interface{}) error {

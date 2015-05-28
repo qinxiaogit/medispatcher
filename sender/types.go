@@ -120,7 +120,7 @@ type SubscriptionParams struct {
 	ConcurrencyOfRetry uint16
 	IntervalOfSending  uint16
 	// Process timeout in milliseconds
-	ProcessTimeout uint32
+	ProcessTimeout uint16
 }
 
 // getFieName returns the name of the file that stores the subscription params.

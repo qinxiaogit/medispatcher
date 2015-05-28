@@ -48,6 +48,13 @@ func SetSubscriptionParams(subscriptionId int32, param SubscriptionParams) error
 	if param.ConcurrencyOfRetry > config.GetConfig().MaxSendersPerRetryChannel {
 		return errors.New(fmt.Sprintf("Sender(as retry) number[%v] exceeded max[%v]", param.ConcurrencyOfRetry, config.GetConfig().MaxSendersPerRetryChannel))
 	}
+
+	if param.ProcessTimeout > config.GetConfig().MaxMessageProcessTime {
+		return errors.New(fmt.Sprintf("Message max process time[%v] exceeded max[%v]", param.ProcessTimeout, config.GetConfig().MaxMessageProcessTime))
+	} else if param.ProcessTimeout <=0 {
+		param.ProcessTimeout = 1
+	}
+	routineStatus.SetSubParam("ProcessTimeout", param.ProcessTimeout)
 	routineStatus.lock()
 	var (
 		coCount        = routineStatus.coCount

@@ -33,8 +33,11 @@ SendersPerChannel=5
 # 每个订阅(重试时)默认的并发推送数
 SendersPerRetryChannel=2
 
-# 每个订阅单线程上最小推送间隔时间。
+# 每个订阅单线程上最小推送间隔时间(ms)。
 IntervalOfSendingForSendRoutine=10
+
+# 每个消息允许的最大处理时间(ms)。
+MaxMessageProcessTime=30000
 
 # 重试延时参数. 值越大，下一次推送时间滞后越大.
 # interval = pow(retryTimes+1, 2)*CoeOfIntervalForRetrySendingMsg

@@ -26,8 +26,9 @@ func (i SetSubscriptionParams) unlok() {
 
 // Set the params that affects the sender routine performances.
 // args {"SubscriptionId": 32,
-//       "Params": {"Concurrency": 2, "ConcurrencyOfRetry": 1,  "IntervalOfSending": 211}
+//       "Params": {"Concurrency": 2, "ConcurrencyOfRetry": 1,  "IntervalOfSending": 211, "ProcessTimeout": 2000}
 //      }
+// ProcessTimeout is in milliseconds.
 func (i SetSubscriptionParams) Process(args map[string]interface{}) (re interface{}, err error) {
 	i.lock()
 	defer func() {
@@ -67,7 +68,7 @@ func (i SetSubscriptionParams) Process(args map[string]interface{}) (re interfac
 		rElemField := rElem.FieldByName(n)
 		if rElemField.IsValid() {
 			switch n {
-			case "ConcurrencyOfRetry", "Concurrency", "IntervalOfSending":
+			case "ConcurrencyOfRetry", "Concurrency", "IntervalOfSending", "ProcessTimeout":
 				if vf, ok := v.(float64); !ok {
 					err = errors.New(fmt.Sprintf("Param type error: %s: %v", n, v))
 					return

@@ -11,9 +11,9 @@ import (
 	"medispatcher/rpc"
 	_ "medispatcher/rpc/handlers"
 	"net"
+	"reflect"
 	"strconv"
 	"time"
-	"reflect"
 )
 
 const (
@@ -334,7 +334,7 @@ func processRequest(requestData []byte) (re []byte, err error) {
 	}
 
 	if _, ok := clientData["cmd"].(string); !ok {
-		err=errors.New("Args needs string while received: " + reflect.TypeOf(clientData["cmd"]).String())
+		err = errors.New("Args needs string while received: " + reflect.TypeOf(clientData["cmd"]).String())
 		return
 	}
 
@@ -344,28 +344,21 @@ func processRequest(requestData []byte) (re []byte, err error) {
 	}
 
 	if _, ok := clientData["args"].(map[string]interface{}); !ok {
-		err=errors.New("Args needs map[string]interface while received: " + reflect.TypeOf(clientData["args"]).String())
+		err = errors.New("Args needs map[string]interface while received: " + reflect.TypeOf(clientData["args"]).String())
 		return
 	}
 
 	pqCh := make(chan ProcessResult)
-	pStartTime := time.Now().Unix()
 	go runRequestHandler(pqCh, clientData["cmd"].(string), clientData["args"].(map[string]interface{}))
-	continueProcess := true
-	for continueProcess {
-		select {
-		case result := <-pqCh:
-			re = result.Result
-			err = result.Error
-			continueProcess = false
-		default:
-			if time.Now().Unix()-pStartTime > config.PROCESS_TIMEOUT {
-				err = errors.New("Process timeout.")
-				logger.GetLogger("WARN").Printf("Cmd: %s: %v", clientData["cmd"], err)
-				continueProcess = false
-			}
-			time.Sleep(time.Nanosecond * 20)
-		}
+	pTimeout := time.After(time.Second * time.Duration(config.PROCESS_TIMEOUT))
+
+	select {
+	case result := <-pqCh:
+		re = result.Result
+		err = result.Error
+	case <-pTimeout:
+		err = errors.New("Process timeout.")
+		logger.GetLogger("WARN").Printf("Cmd: %s: %v", clientData["cmd"], err)
 	}
 	return
 }

@@ -43,6 +43,9 @@ type Config struct {
 
 	SendersPerRetryChannel uint16
 
+	// In milliseconds
+	MaxMessageProcessTime uint16
+
 	// interval = pow(retryTimes+1, 2)*CoeOfIntervalForRetrySendingMsg
 	CoeOfIntervalForRetrySendingMsg uint16
 
@@ -55,20 +58,21 @@ type Config struct {
 }
 
 var config = &Config{
-	QueueServerType:                        "beanstalk",
-	ListenAddr:                             "0.0.0.0:5601",
-	NameOfMainQueue:                        "main-incoming-queue",
-	PrefixOfChannelQueue:                   "sub-queue/",
-	QueueServerAddr:                        "127.0.0.1:11300",
-	ListenersOfMainQueue:                   uint16(1),
-	SendersPerChannel:                      uint16(1),
-	MaxSendersPerChannel:                   uint16(10),
-	IntervalOfSendingForSendRoutine:        uint16(1),
-	SendersPerRetryChannel:                 uint16(1),
-	MaxSendersPerRetryChannel:              uint16(10),
-	CoeOfIntervalForRetrySendingMsg:        uint16(10),
-	EnableMsgSentLog:                       true,
-	MaxRetryTimesOfSendingMessage:          uint16(10),
-	MsgQueueFaultToleranceListNamePrefix:   "mec_list_of_msg_for_restore_to_queue_server:",
+	QueueServerType:                      "beanstalk",
+	ListenAddr:                           "0.0.0.0:5601",
+	NameOfMainQueue:                      "main-incoming-queue",
+	PrefixOfChannelQueue:                 "sub-queue/",
+	QueueServerAddr:                      "127.0.0.1:11300",
+	ListenersOfMainQueue:                 uint16(1),
+	SendersPerChannel:                    uint16(1),
+	MaxSendersPerChannel:                 uint16(10),
+	IntervalOfSendingForSendRoutine:      uint16(1),
+	SendersPerRetryChannel:               uint16(1),
+	MaxSendersPerRetryChannel:            uint16(10),
+	CoeOfIntervalForRetrySendingMsg:      uint16(10),
+	EnableMsgSentLog:                     true,
+	MaxRetryTimesOfSendingMessage:        uint16(10),
+	MaxMessageProcessTime:                uint16(30000),
+	MsgQueueFaultToleranceListNamePrefix: "mec_list_of_msg_for_restore_to_queue_server:",
 	DATA_DIR: "/var/lib/medispatcher/",
 }
