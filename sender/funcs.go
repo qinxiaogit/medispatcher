@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"medispatcher/logger"
+	"medispatcher/config"
 )
 
 // Stop stops the senders.
@@ -40,6 +41,12 @@ func SetSubscriptionParams(subscriptionId int32, param SubscriptionParams) error
 	routineStatus := senderRoutineStats.getStatus(subscriptionId)
 	if routineStatus == nil {
 		return errors.New(fmt.Sprintf("Failed to get routine status for subscription(%v).", subscriptionId))
+	}
+	if param.Concurrency > config.GetConfig().MaxSendersPerChannel {
+		return errors.New(fmt.Sprintf("Sender number[%v] exceeded max[%v]", param.Concurrency, config.GetConfig().MaxSendersPerChannel))
+	}
+	if param.ConcurrencyOfRetry > config.GetConfig().MaxSendersPerRetryChannel {
+		return errors.New(fmt.Sprintf("Sender(as retry) number[%v] exceeded max[%v]", param.ConcurrencyOfRetry, config.GetConfig().MaxSendersPerRetryChannel))
 	}
 	routineStatus.lock()
 	var (

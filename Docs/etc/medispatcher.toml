@@ -17,13 +17,23 @@ PrefixOfChannelQueue="sub-queue/"
 # 开启消息推送日志
 EnableMsgSentLog=true
 
+
+# 主队列上消息分发并发数
 ListenersOfMainQueue=10
 
+# 每个订阅允许的最大并发推送数
+MaxSendersPerChannel=10
+
+# 每个订阅(重试时)允许的最大并发推送数
+MaxSendersPerRetryChannel=5
+
+# 每个订阅默认的并发推送数
 SendersPerChannel=5
 
+# 每个订阅(重试时)默认的并发推送数
 SendersPerRetryChannel=2
 
-# (正常队列上)每个订阅单线程上最小推送间隔时间。
+# 每个订阅单线程上最小推送间隔时间。
 IntervalOfSendingForSendRoutine=10
 
 # 重试延时参数. 值越大，下一次推送时间滞后越大.

@@ -61,12 +61,16 @@ func handleSubscription(sub data.SubscriptionRecord) {
 		logger.GetLogger("INFO").Printf("Failed to load subscription params: %v, ignore customized subscription performance params.", err)
 	}
 
-	if err != nil || subParams.Concurrency > config.GetConfig().MaxSendersPerChannel {
+	if err != nil {
 		subParams.Concurrency = config.GetConfig().SendersPerChannel
+	} else if subParams.Concurrency > config.GetConfig().MaxSendersPerChannel {
+		subParams.Concurrency = config.GetConfig().MaxSendersPerChannel
 	}
 
-	if err != nil || subParams.ConcurrencyOfRetry > config.GetConfig().MaxSendersPerRetryChannel {
+	if err != nil{
 		subParams.ConcurrencyOfRetry = config.GetConfig().SendersPerRetryChannel
+	} else if subParams.ConcurrencyOfRetry > config.GetConfig().MaxSendersPerRetryChannel {
+		subParams.ConcurrencyOfRetry = config.GetConfig().MaxSendersPerRetryChannel
 	}
 
 	sossrLock := make(chan int8, 1)
