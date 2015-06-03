@@ -25,4 +25,10 @@ const (
 	DEFAULT_RESERVE_TIMEOUT        = 1
 )
 
-var senderRoutineStats = &SenderRoutineStats{routineStatus: map[int32]*StatusOfSubSenderRoutine{}}
+var senderRoutineStats = &SenderRoutineStats{
+	routineStatus: map[int32]*StatusOfSubSenderRoutine{},
+	lockChan: func()*chan bool {
+		ch := make(chan bool, 1)
+		return &ch
+	}(),
+}

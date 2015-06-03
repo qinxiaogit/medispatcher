@@ -6,16 +6,15 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"strconv"
 )
 
 // GetChannelName returns the queue name for subscription.
 func GetChannelName(topicName string, subscriptionId int32) string {
-	return topicName + "/" + GetConfig().PrefixOfChannelQueue + strconv.Itoa(int(subscriptionId))
+	return fmt.Sprintf("%v/%v%v", topicName, GetConfig().PrefixOfChannelQueue, subscriptionId)
 }
 
 func GetChannelNameForReSend(topicName string, subscriptionId int32) string {
-	return topicName + "/FAIL/" + GetConfig().PrefixOfChannelQueue + strconv.Itoa(int(subscriptionId))
+	return fmt.Sprintf("%v/%v%v/FAIL", topicName, GetConfig().PrefixOfChannelQueue, subscriptionId)
 }
 
 // SaveConfig saves config to DATA_DIR as json file.

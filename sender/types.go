@@ -140,7 +140,7 @@ func (sp *SubscriptionParams) Load(subscriptionId int32) (err error) {
 		}
 		for n, d := range params {
 			switch n {
-			case "ConcurrencyOfRetry", "Concurrency", "IntervalOfSending":
+			case "ConcurrencyOfRetry", "Concurrency", "IntervalOfSending", "ProcessTimeout":
 				var v uint16
 				if vf, ok := d.(float64); !ok {
 					err = errors.New(fmt.Sprintf("Failed to load params: %s type assertion failed", n))
@@ -160,16 +160,13 @@ func (sp *SubscriptionParams) Store(subscriptionId int32) error {
 	return config.SaveConfig(sp.getFileName(subscriptionId), *sp)
 }
 
+// SenderRoutineStats holds the statistics of all sender routines that handles the subscriptions.
 type SenderRoutineStats struct {
 	lockChan      *chan bool
 	routineStatus map[int32]*StatusOfSubSenderRoutine
 }
 
 func (srs *SenderRoutineStats) lock() {
-	if (*srs).lockChan == nil {
-		ch := make(chan bool, 1)
-		(*srs).lockChan = &ch
-	}
 	*(*srs).lockChan <- true
 }
 
@@ -188,6 +185,12 @@ func (srs *SenderRoutineStats) addStatus(subscriptionId int32, status *StatusOfS
 	return nil
 }
 
+func (srs *SenderRoutineStats) removeStatus(subscriptionId int32){
+	srs.lock()
+	defer srs.unlock()
+	delete((*srs).routineStatus, subscriptionId)
+}
+
 func (srs *SenderRoutineStats) setStatus(subscriptionId int32, status *StatusOfSubSenderRoutine) {
 	srs.lock()
 	defer srs.unlock()
@@ -204,4 +207,12 @@ func (srs *SenderRoutineStats) statusExists(subscriptionId int32) bool {
 
 func (srs *SenderRoutineStats) getStatus(subscriptionId int32) *StatusOfSubSenderRoutine {
 	return (*srs).routineStatus[subscriptionId]
+}
+
+func (srs *SenderRoutineStats) getHandlingSubscriptionIds() []int32 {
+	ids := []int32{}
+	for id, _ := range (*srs).routineStatus {
+		ids = append(ids, id)
+	}
+	return ids
 }

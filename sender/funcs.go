@@ -35,12 +35,13 @@ func shouldExit() bool {
 // SetSubscriptionParams changes the params that affects the sender routine performances.
 // This function is not go-routine safe. The invoker should implement go-routine safe calls.
 func SetSubscriptionParams(subscriptionId int32, param SubscriptionParams) error {
-	if !senderRoutineStats.statusExists(subscriptionId) {
-		return errors.New(fmt.Sprintf("Routine for handling subscription(%v) not exists.", subscriptionId))
-	}
+
 	routineStatus := senderRoutineStats.getStatus(subscriptionId)
+	// No currently running routine for the subscription. Maybe the subscription is in canceled status.
 	if routineStatus == nil {
-		return errors.New(fmt.Sprintf("Failed to get routine status for subscription(%v).", subscriptionId))
+		// lock the  senderRoutineStats, in case a new routine for handling the subscription is created before its parameters are stored.
+		senderRoutineStats.lock()
+		defer senderRoutineStats.unlock()
 	}
 	if param.Concurrency > config.GetConfig().MaxSendersPerChannel {
 		return errors.New(fmt.Sprintf("Sender number[%v] exceeded max[%v]", param.Concurrency, config.GetConfig().MaxSendersPerChannel))
@@ -52,8 +53,17 @@ func SetSubscriptionParams(subscriptionId int32, param SubscriptionParams) error
 	if param.ProcessTimeout > config.GetConfig().MaxMessageProcessTime {
 		return errors.New(fmt.Sprintf("Message max process time[%v] exceeded max[%v]", param.ProcessTimeout, config.GetConfig().MaxMessageProcessTime))
 	} else if param.ProcessTimeout <=0 {
-		param.ProcessTimeout = 1
+		param.ProcessTimeout = config.GetConfig().DefaultMaxMessageProcessTime
 	}
+
+	if routineStatus == nil{
+		err := param.Store(subscriptionId)
+		if err != nil {
+			logger.GetLogger("WARN").Printf("Failed to save subscription params for subscription: %v: %v", subscriptionId, err)
+		}
+		return nil
+	}
+
 	routineStatus.SetSubParam("ProcessTimeout", param.ProcessTimeout)
 	routineStatus.lock()
 	var (

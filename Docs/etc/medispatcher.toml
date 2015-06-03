@@ -39,6 +39,9 @@ IntervalOfSendingForSendRoutine=10
 # 每个消息允许的最大处理时间(ms)。
 MaxMessageProcessTime=30000
 
+# (默认的)每个消息允许的最大处理时间(ms)
+DefaultMaxMessageProcessTime=5000
+
 # 重试延时参数. 值越大，下一次推送时间滞后越大.
 # interval = pow(retryTimes+1, 2)*CoeOfIntervalForRetrySendingMsg
 CoeOfIntervalForRetrySendingMsg=1

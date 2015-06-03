@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/syndtr/goleveldb/leveldb/errors"
+	"errors"
 	"medispatcher/rpc"
 	"medispatcher/sender"
 	"reflect"
@@ -43,7 +43,7 @@ func (i SetSubscriptionParams) Process(args map[string]interface{}) (re interfac
 	var newParamsI interface{}
 	var ok bool
 	if _, ok = args["SubscriptionId"]; !ok {
-		return nil, errors.New("argument 'SubscrpitonId' not exists!")
+		return nil, errors.New("argument 'SubscriptionId' not exists!")
 	} else if newParamsI, ok = args["Params"]; !ok {
 		return nil, errors.New("empty Params!")
 	}

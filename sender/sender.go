@@ -29,6 +29,24 @@ func StartAndWait() {
 				}
 			}
 		}
+		// exits the routines for the subscriptions which have been canceled.
+		handlingSubIds := senderRoutineStats.getHandlingSubscriptionIds()
+		for _, id := range handlingSubIds {
+			enabled := false
+			for _, sub := range subscriptions {
+				if sub.Subscription_id == id {
+					enabled = true
+					break
+				}
+			}
+			if !enabled{
+				status := senderRoutineStats.getStatus(id)
+				if status != nil{
+					status.sigChan <- SENDER_ROUTINE_SIG_EXIT_ALL_ROUTINES
+					senderRoutineStats.removeStatus(id)
+				}
+			}
+		}
 		time.Sleep(time.Second * 1)
 	}
 	// exit
@@ -67,7 +85,13 @@ func handleSubscription(sub data.SubscriptionRecord) {
 		subParams.Concurrency = config.GetConfig().MaxSendersPerChannel
 	}
 
-	if err != nil{
+	if subParams.ProcessTimeout == 0 {
+		subParams.ProcessTimeout = config.GetConfig().DefaultMaxMessageProcessTime
+	} else if subParams.ProcessTimeout > config.GetConfig().MaxMessageProcessTime {
+		subParams.ProcessTimeout = config.GetConfig().MaxMessageProcessTime
+	}
+
+	if err != nil {
 		subParams.ConcurrencyOfRetry = config.GetConfig().SendersPerRetryChannel
 	} else if subParams.ConcurrencyOfRetry > config.GetConfig().MaxSendersPerRetryChannel {
 		subParams.ConcurrencyOfRetry = config.GetConfig().MaxSendersPerRetryChannel

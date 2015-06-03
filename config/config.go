@@ -46,6 +46,9 @@ type Config struct {
 	// In milliseconds
 	MaxMessageProcessTime uint16
 
+	// In milliseconds
+	DefaultMaxMessageProcessTime uint16
+
 	// interval = pow(retryTimes+1, 2)*CoeOfIntervalForRetrySendingMsg
 	CoeOfIntervalForRetrySendingMsg uint16
 
@@ -73,6 +76,7 @@ var config = &Config{
 	EnableMsgSentLog:                     true,
 	MaxRetryTimesOfSendingMessage:        uint16(10),
 	MaxMessageProcessTime:                uint16(30000),
+	DefaultMaxMessageProcessTime:         uint16(5000),
 	MsgQueueFaultToleranceListNamePrefix: "mec_list_of_msg_for_restore_to_queue_server:",
 	DATA_DIR: "/var/lib/medispatcher/",
 }
