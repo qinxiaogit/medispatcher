@@ -298,7 +298,15 @@ func sendSubscription(sub data.SubscriptionRecord, sossr *StatusOfSubSenderRouti
 					br.Bury(jobId)
 				} else {
 					sentSuccess = false
-					sub.Timeout = sossr.GetSubParams().ProcessTimeout
+					// subscription parameters may changes dynamically, while "sub" object won't  until the dispatcher service is restarted.
+					procesTimeout := sossr.GetSubParams().ProcessTimeout
+					receptionUri  := sossr.GetSubParams().ReceptionUri
+					if procesTimeout > 0 {
+						sub.Timeout = procesTimeout
+					}
+					if receptionUri != "" {
+						sub.Reception_channel = receptionUri
+					}
 					st := time.Now()
 					httpStatusCode, returnData, err = transferSubscriptionViaHttp(&msg, &sub, 0)
 					et := time.Now()
@@ -467,7 +475,15 @@ func sendSubscriptionAsRetry(sub data.SubscriptionRecord, sossr *StatusOfSubSend
 				} else {
 					msg.RetryTimes += 1
 					sentSuccess = false
-					sub.Timeout = sossr.GetSubParams().ProcessTimeout
+					// subscription parameters may changes dynamically, while "sub" object won't  until the dispatcher service is restarted.
+					procesTimeout := sossr.GetSubParams().ProcessTimeout
+					receptionUri  := sossr.GetSubParams().ReceptionUri
+					if procesTimeout > 0 {
+						sub.Timeout = procesTimeout
+					}
+					if receptionUri != "" {
+						sub.Reception_channel = receptionUri
+					}
 					st := time.Now()
 					httpStatusCode, returnData, sendingErr = transferSubscriptionViaHttp(&msg, &sub, msg.RetryTimes)
 					et := time.Now()

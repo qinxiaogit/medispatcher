@@ -121,6 +121,7 @@ type SubscriptionParams struct {
 	IntervalOfSending  uint16
 	// Process timeout in milliseconds
 	ProcessTimeout uint16
+	ReceptionUri   string
 }
 
 // getFieName returns the name of the file that stores the subscription params.
@@ -185,7 +186,7 @@ func (srs *SenderRoutineStats) addStatus(subscriptionId int32, status *StatusOfS
 	return nil
 }
 
-func (srs *SenderRoutineStats) removeStatus(subscriptionId int32){
+func (srs *SenderRoutineStats) removeStatus(subscriptionId int32) {
 	srs.lock()
 	defer srs.unlock()
 	delete((*srs).routineStatus, subscriptionId)

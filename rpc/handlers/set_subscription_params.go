@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"fmt"
 	"errors"
+	"fmt"
 	"medispatcher/rpc"
 	"medispatcher/sender"
 	"reflect"
@@ -26,7 +26,12 @@ func (i SetSubscriptionParams) unlok() {
 
 // Set the params that affects the sender routine performances.
 // args {"SubscriptionId": 32,
-//       "Params": {"Concurrency": 2, "ConcurrencyOfRetry": 1,  "IntervalOfSending": 211, "ProcessTimeout": 2000}
+//       "Params": {"Concurrency": 2,
+//                  "ConcurrencyOfRetry": 1,
+//                  "IntervalOfSending": 211,
+//                  "ProcessTimeout": 2000,
+//                  "ReceptionUri": "http://worker.com/HandleMessage"
+//                 }
 //      }
 // ProcessTimeout is in milliseconds.
 func (i SetSubscriptionParams) Process(args map[string]interface{}) (re interface{}, err error) {

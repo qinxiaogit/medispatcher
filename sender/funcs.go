@@ -64,7 +64,18 @@ func SetSubscriptionParams(subscriptionId int32, param SubscriptionParams) error
 		return nil
 	}
 
-	routineStatus.SetSubParam("ProcessTimeout", param.ProcessTimeout)
+	var err error
+	if param.ProcessTimeout != 0 {
+		err = routineStatus.SetSubParam("ProcessTimeout", param.ProcessTimeout)
+	}
+
+	if err == nil && param.ReceptionUri != "" {
+		err = routineStatus.SetSubParam("ReceptionUri", param.ReceptionUri)
+	}
+	if err != nil {
+		return err
+	}
+
 	routineStatus.lock()
 	var (
 		coCount        = routineStatus.coCount
@@ -108,7 +119,7 @@ func SetSubscriptionParams(subscriptionId int32, param SubscriptionParams) error
 		}
 		routineStatus.SetSubParam("ConcurrencyOfRetry", param.ConcurrencyOfRetry)
 	}
-	err := routineStatus.SetSubParam("IntervalOfSending", param.IntervalOfSending)
+	err = routineStatus.SetSubParam("IntervalOfSending", param.IntervalOfSending)
 	if err != nil {
 		return err
 	}
