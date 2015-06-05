@@ -19,7 +19,20 @@ First release of v2.
 
 * Multi-channel, parallel message push by channels. Push of subscriptions will no longer be blocked by other slow message receivers/consumers.
  
- 
+### 2.1.0
+2.1.0 released(refers to the git tag).    
+
+* Performance parameters can be controlled as to each subscription on the backend control panel.    
+ parameters are: 
+ <pre>
+ count of concurrent push routines for the subscription.    
+ count of concurrent retry-push routines for the subscription.     
+ minimum interval between pushes.    
+ message process timeout.     
+ message process uri.     
+ </pre>
+
+* Above parameters take effects instantly. Do not requires dispatcher service restarting or reloading.
  
 ## Milestone
 
@@ -29,7 +42,15 @@ First release of v2.
 * Performance parameters can be controlled as to each subscription on the backend control panel.    
  parameters are: count of concurrent push routines for the subscription, count of concurrent retry-push routines for the subscription, minimum interval between pushes.
  
-### 2.1.1
+### 2.2.0
+####Features    
+* Alerters when message processing failures reaches certain thresholds.    
+
+### 2.3.0
+####Features
+* Performance and message server link utilization enhancement. A link can binds to multiple message pushing routines.
+ 
+### 2.4.0
 ####Features
 
 * Messages sent/received statistics
