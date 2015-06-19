@@ -33,6 +33,15 @@ First release of v2.
  </pre>
 
 * Above parameters take effects instantly. Do not requires dispatcher service restarting or reloading.
+
+### 2.2.0 
+2.2.0 released(refers to the git tag).    
+
+* Alerts when message processing failures reaches certain thresholds.     
+    * alert when the subscription processor fails on a certain frequency.
+    * alert when a message processing failing times reached the threshold.
+    * alert when the subscription channel queued message count reached the threshold.
+* Fixed the optimization for rpc service exiting: the readings from client will no longer block exiting.    
  
 ## Milestone
 
@@ -44,7 +53,7 @@ First release of v2.
  
 ### 2.2.0
 ####Features    
-* Alerters when message processing failures reaches certain thresholds.    
+* Alerts when message processing failures reaches certain thresholds.    
 
 ### 2.3.0
 ####Features
