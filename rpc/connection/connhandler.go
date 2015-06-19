@@ -216,7 +216,7 @@ func Stop(exitSigChan *chan string) {
 	// 如果有多次调用，后边的协程将被阻塞
 	masterCommCh <- 1
 	setStoppingState()
-
+	sso.SendSignal()
 	for GetCurrentConnectionCount() > 0 {
 		time.Sleep(time.Millisecond * 10)
 	}

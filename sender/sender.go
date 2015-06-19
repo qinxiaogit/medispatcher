@@ -181,7 +181,7 @@ func handleSubscription(sub data.SubscriptionRecord) {
 						continue
 					}
 					select {
-					// test if the routine received the signal and should exit.
+					// test if the routine received the signal and exited.
 					case *ch <- SENDER_ROUTINE_SIG_EXITED:
 						close(*ch)
 						exitedCo += 1
@@ -226,13 +226,6 @@ func handleSubscription(sub data.SubscriptionRecord) {
 }
 
 func sendSubscription(sub data.SubscriptionRecord, sossr *StatusOfSubSenderRoutine, ch *chan SubSenderRoutineChanSig) {
-	defer func() {
-		err := recover()
-		if err != nil {
-			logger.GetLogger("ERROR").Printf("sender routine exiting abnormally: %v", err)
-			*ch <- SENDER_ROUTINE_SIG_EXITED_ABNORMALLY
-		}
-	}()
 	var (
 		br                     broker.Broker
 		brPt                   *broker.Broker
@@ -246,14 +239,22 @@ func sendSubscription(sub data.SubscriptionRecord, sossr *StatusOfSubSenderRouti
 		errMsgInSending        string
 		timerOfSendingInterval time.Time
 	)
+	defer func() {
+		if brPt != nil {
+			br.Close()
+		}
+		err := recover()
+		if err != nil {
+			logger.GetLogger("ERROR").Printf("sender routine exiting abnormally: %v", err)
+			*ch <- SENDER_ROUTINE_SIG_EXITED_ABNORMALLY
+		}
+	}()
+
 	queueName := config.GetChannelName(sub.Class_key, sub.Subscription_id)
 	for {
 		select {
 		case sig := <-*ch:
 			if sig == SENDER_ROUTINE_SIG_EXIT {
-				if brPt != nil {
-					br.Close()
-				}
 				return
 			}
 		default:
@@ -395,7 +396,20 @@ func sendSubscription(sub data.SubscriptionRecord, sossr *StatusOfSubSenderRouti
 					}
 					minDu := time.Millisecond * time.Duration(minInterval)
 					if elapsed < minDu {
-						time.Sleep(minDu - elapsed)
+						restTimeout := time.After(minDu - elapsed)
+						loop := true
+						// select , in case something else need to do.
+						for loop {
+							select {
+							case superSig := <-*ch:
+								loop = false
+								if superSig == SENDER_ROUTINE_SIG_EXIT {
+									return
+								}
+							case <-restTimeout:
+								loop = false
+							}
+						}
 					}
 				}
 			}
@@ -404,13 +418,6 @@ func sendSubscription(sub data.SubscriptionRecord, sossr *StatusOfSubSenderRouti
 }
 
 func sendSubscriptionAsRetry(sub data.SubscriptionRecord, sossr *StatusOfSubSenderRoutine, ch *chan SubSenderRoutineChanSig) {
-	defer func() {
-		err := recover()
-		if err != nil {
-			logger.GetLogger("ERROR").Printf("sender routine for retry-channel exiting abnormally: %v", err)
-			*ch <- SENDER_ROUTINE_SIG_EXITED_ABNORMALLY
-		}
-	}()
 	var (
 		br                     broker.Broker
 		brPt                   *broker.Broker
@@ -425,15 +432,23 @@ func sendSubscriptionAsRetry(sub data.SubscriptionRecord, sossr *StatusOfSubSend
 		errMsgInSending        string
 		timerOfSendingInterval time.Time
 	)
+
+	defer func() {
+		if brPt != nil {
+			br.Close()
+		}
+		err := recover()
+		if err != nil {
+			logger.GetLogger("ERROR").Printf("sender routine for retry-channel exiting abnormally: %v", err)
+			*ch <- SENDER_ROUTINE_SIG_EXITED_ABNORMALLY
+		}
+	}()
 	queueName := config.GetChannelNameForReSend(sub.Class_key, sub.Subscription_id)
 
 	for {
 		select {
 		case sig := <-*ch:
 			if sig == SENDER_ROUTINE_SIG_EXIT {
-				if brPt != nil {
-					br.Close()
-				}
 				return
 			}
 		default:
@@ -582,7 +597,20 @@ func sendSubscriptionAsRetry(sub data.SubscriptionRecord, sossr *StatusOfSubSend
 			}
 			minDu := time.Millisecond * time.Duration(minInterval)
 			if elapsed < minDu {
-				time.Sleep(minDu - elapsed)
+				restTimeout := time.After(minDu - elapsed)
+				loop := true
+				// select , in case something else need to do.
+				for loop {
+					select {
+					case superSig := <-*ch:
+						loop = false
+						if superSig == SENDER_ROUTINE_SIG_EXIT {
+							return
+						}
+					case <-restTimeout:
+						loop = false
+					}
+				}
 			}
 		}
 	}
@@ -617,7 +645,7 @@ func transferSubscriptionViaHttp(msg *data.MessageStuct, sub *data.SubscriptionR
 }
 
 func putToRetryChannel(br *broker.Broker, sub *data.SubscriptionRecord, msg *data.MessageStuct, stats *map[string]interface{}) error {
-	delay := getRetryDelay(msg.RetryTimes + 1, config.GetConfig().CoeOfIntervalForRetrySendingMsg)
+	delay := getRetryDelay(msg.RetryTimes+1, config.GetConfig().CoeOfIntervalForRetrySendingMsg)
 	msgData, err := data.SerializeMessage(*msg)
 	if err != nil {
 		return errors.New(fmt.Sprintf("Failed to serialize msg: %v", err))
