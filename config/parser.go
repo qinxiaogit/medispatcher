@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"medispatcher/Alerter"
 )
 
 func GetConfig() Config {
@@ -66,7 +67,37 @@ func ParseConfig() (*Config, error) {
 					elem.SetString(svItem)
 				}
 			case *toml.TomlTree:
-				elem.Set(reflect.ValueOf(TraverseTomlTree(sItem.(*toml.TomlTree))))
+				switch key {
+				case "AlerterEmail", "AlerterSms":
+					var alerterType string
+					if key == "AlerterEmail" {
+						alerterType = "Email"
+					} else {
+						alerterType = "Sms"
+					}
+					cCfg := Alerter.Config{
+						ProxyType: alerterType,
+					}
+
+					cCfgRf := reflect.ValueOf(&cCfg)
+					for cKey, cValue := range TraverseTomlTree(sItem.(*toml.TomlTree)) {
+						cElem := cCfgRf.Elem().FieldByName(cKey)
+						if cElem.IsValid() {
+							if cKey == "PostFieldsMap"{
+								 mV := map[string]string{}
+								for k, v := range cValue.(map[string]interface{}){
+									mV[k] = v.(string)
+								}
+								cElem.Set(reflect.ValueOf(mV))
+							} else {
+								cElem.Set(reflect.ValueOf(cValue))
+							}
+						}
+					}
+					elem.Set(reflect.ValueOf(cCfg))
+				default:
+					elem.Set(reflect.ValueOf(TraverseTomlTree(sItem.(*toml.TomlTree))))
+				}
 			case int64:
 				switch elem.Kind() {
 				case reflect.Int, reflect.Int64, reflect.Int32, reflect.Int16, reflect.Int8:

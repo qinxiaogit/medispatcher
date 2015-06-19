@@ -22,7 +22,30 @@ const (
 
 var debug bool
 
-//	TODO: not coroutine savfe
+
+var config = &Config{
+	QueueServerType:                      "beanstalk",
+	ListenAddr:                           "0.0.0.0:5601",
+	NameOfMainQueue:                      "main-incoming-queue",
+	PrefixOfChannelQueue:                 "sub-queue/",
+	QueueServerAddr:                      "127.0.0.1:11300",
+	ListenersOfMainQueue:                 uint16(1),
+	SendersPerChannel:                    uint16(1),
+	MaxSendersPerChannel:                 uint16(10),
+	IntervalOfSendingForSendRoutine:      uint16(1),
+	SendersPerRetryChannel:               uint16(1),
+	MaxSendersPerRetryChannel:            uint16(10),
+	CoeOfIntervalForRetrySendingMsg:      uint16(10),
+	EnableMsgSentLog:                     true,
+	MaxRetryTimesOfSendingMessage:        uint16(10),
+	MaxMessageProcessTime:                uint16(30000),
+	DefaultMaxMessageProcessTime:         uint16(5000),
+	MsgQueueFaultToleranceListNamePrefix: "mec_list_of_msg_for_restore_to_queue_server:",
+	DATA_DIR: "/var/lib/medispatcher/",
+}
+
+
+//	TODO: not coroutine safe
 func DebugEnabled() bool {
 	return debug
 }
@@ -60,7 +83,7 @@ func Setup() error {
 	config.DAEMON_UID = daemonUid
 	config.DAEMON_GID = daemonGid
 
-	config.InstallDir = path.Dir(os.Args[0]) + string(os.PathListSeparator)
+	config.InstallDir = path.Dir(os.Args[0]) + string(os.PathSeparator)
 
 	if !util.FileExists(config.LOG_DIR) {
 		err = os.MkdirAll(config.LOG_DIR, 0755)

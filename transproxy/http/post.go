@@ -14,7 +14,6 @@ import (
 func Transfer(addr string, data map[string]string, timeout time.Duration) (httpStatusCode int, respData []byte, err error) {
 	tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
 	client := &http.Client{Timeout: timeout, Transport: tr}
-
 	reqData := url.Values{}
 	for k, v := range data {
 		reqData[k] = []string{v}

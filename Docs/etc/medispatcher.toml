@@ -58,3 +58,29 @@ DbName="jm_event"
 [Redis]
 Addr="127.0.0.1:6379"
 DbIndex=4
+
+# 报警设置
+[AlerterEmail]
+Gateway="http://127.0.0.1"
+AckStr="sent"
+User=""
+Password=""
+TemplateRootPath="/var/lib/medispatcher/alerter_templates/email/"
+
+[AlerterEmail.PostFieldsMap]
+Recipient = "email_destinations"
+Subject = "email_subject"
+Content = "email_content"
+
+[AlerterSms]
+Gateway="http://127.0.0.1"
+AckStr="ok"
+User="monitor"
+Password="xxxx"
+TemplateRootPath="/var/lib/medispatcher/alerter_templates/sms/"
+
+[AlerterSms.PostFieldsMap]
+User="task"
+Password="key"
+Recipient = "num"
+Content = "content"

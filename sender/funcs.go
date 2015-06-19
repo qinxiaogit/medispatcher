@@ -3,8 +3,9 @@ package sender
 import (
 	"errors"
 	"fmt"
-	"medispatcher/logger"
+	"math"
 	"medispatcher/config"
+	"medispatcher/logger"
 )
 
 // Stop stops the senders.
@@ -32,6 +33,10 @@ func shouldExit() bool {
 	return r
 }
 
+func getRetryDelay(retryTimes uint16, coeOfIntervalForRetrySendingMsg uint16) float64 {
+	return math.Pow(float64(retryTimes), float64(2)) * float64(coeOfIntervalForRetrySendingMsg)
+}
+
 // SetSubscriptionParams changes the params that affects the sender routine performances.
 // This function is not go-routine safe. The invoker should implement go-routine safe calls.
 func SetSubscriptionParams(subscriptionId int32, param SubscriptionParams) error {
@@ -52,11 +57,11 @@ func SetSubscriptionParams(subscriptionId int32, param SubscriptionParams) error
 
 	if param.ProcessTimeout > config.GetConfig().MaxMessageProcessTime {
 		return errors.New(fmt.Sprintf("Message max process time[%v] exceeded max[%v]", param.ProcessTimeout, config.GetConfig().MaxMessageProcessTime))
-	} else if param.ProcessTimeout <=0 {
+	} else if param.ProcessTimeout <= 0 {
 		param.ProcessTimeout = config.GetConfig().DefaultMaxMessageProcessTime
 	}
 
-	if routineStatus == nil{
+	if routineStatus == nil {
 		err := param.Store(subscriptionId)
 		if err != nil {
 			logger.GetLogger("WARN").Printf("Failed to save subscription params for subscription: %v: %v", subscriptionId, err)
@@ -71,6 +76,17 @@ func SetSubscriptionParams(subscriptionId int32, param SubscriptionParams) error
 
 	if err == nil && param.ReceptionUri != "" {
 		err = routineStatus.SetSubParam("ReceptionUri", param.ReceptionUri)
+	}
+
+	if err == nil {
+		err = routineStatus.SetSubParam("AlerterEmails", param.AlerterEmails)
+	}
+
+	if err == nil {
+		err = routineStatus.SetSubParam("AlerterPhoneNumbers", param.AlerterPhoneNumbers)
+	}
+	if err == nil {
+		err = routineStatus.SetSubParam("AlerterEnabled", param.AlerterEnabled)
 	}
 	if err != nil {
 		return err
@@ -95,7 +111,7 @@ func SetSubscriptionParams(subscriptionId int32, param SubscriptionParams) error
 		}
 
 		for ; diff > 0; diff-- {
-			go func(ch *chan SubSenderRoutineChanSig, sig SubSenderRoutineChanSig){
+			go func(ch *chan SubSenderRoutineChanSig, sig SubSenderRoutineChanSig) {
 				*ch <- sig
 			}(&routineStatus.sigChan, sig)
 		}
@@ -113,7 +129,7 @@ func SetSubscriptionParams(subscriptionId int32, param SubscriptionParams) error
 		}
 
 		for ; diff > 0; diff-- {
-			go func(ch *chan SubSenderRoutineChanSig, sig SubSenderRoutineChanSig){
+			go func(ch *chan SubSenderRoutineChanSig, sig SubSenderRoutineChanSig) {
 				*ch <- sig
 			}(&routineStatus.sigChan, sig)
 		}

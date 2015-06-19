@@ -3,33 +3,27 @@ package cache
 
 import (
 	"strings"
+	"sync"
 )
 
 var caches  map[string]interface{}
 
-var cacheRWLock = make(chan int8, 1)
+var rwLock = &sync.Mutex{}
 
 func init(){
 	caches = map[string]interface{}{}
 }
 
-func getRWLock() {
-	cacheRWLock <- int8(1)
-}
-
-func releaseRWLock() {
-	<-cacheRWLock
-}
 
 func Set(key string, data interface{}) {
-	getRWLock()
-	defer releaseRWLock()
+	rwLock.Lock()
+	defer rwLock.Unlock()
 	caches[key] = data
 }
 
 func Get(key string) interface{} {
-	getRWLock()
-	defer releaseRWLock()
+	rwLock.Lock()
+	defer rwLock.Unlock()
 	data := caches[key]
 	return data
 }
@@ -45,15 +39,15 @@ func Delete(key string) {
 }
 
 func Flush()bool{
-	getRWLock()
+	rwLock.Lock()
 	caches = map[string]interface{}{}
-	releaseRWLock()
+	rwLock.Unlock()
 	return true
 }
 
 func DeleteByPrefix(prefixes []string)bool{
-	getRWLock()
-	defer releaseRWLock()
+	rwLock.Lock()
+	defer rwLock.Unlock()
 	for key, _ := range caches {
 		for _, prefix := range prefixes {
 			if strings.Index(key, prefix) == 0 {

@@ -25,10 +25,23 @@ const (
 	DEFAULT_RESERVE_TIMEOUT        = 1
 )
 
+const (
+	// Alert interval(in seconds) for an alert.
+	INTERVAL_OF_ERROR_MONITOR_ALERT = 3 * 60
+	// When the message sent failed times reaches the threshold the alert should be sent.
+	MESSAGE_FAILURE_ALERT_THRESHOLD = 7
+	// When sending messages for the subscription failed and the failed times reached the threshold in a specified period,
+	// the alert should be sent.
+	SUBSCRIPTION_TOTAL_FAILURE_ALERT_THRESHOLD = 50
+	MESSAGE_BLOCKED_ALERT_THRESHOLD            = 5000
+)
+
 var senderRoutineStats = &SenderRoutineStats{
 	routineStatus: map[int32]*StatusOfSubSenderRoutine{},
-	lockChan: func()*chan bool {
+	lockChan: func() *chan bool {
 		ch := make(chan bool, 1)
 		return &ch
 	}(),
 }
+
+var senderErrorMonitor *errorMonitor

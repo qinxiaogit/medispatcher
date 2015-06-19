@@ -67,8 +67,8 @@ func (i SetSubscriptionParams) Process(args map[string]interface{}) (re interfac
 		return nil, errors.New("Invalid Params. Type map[string]interface{} is required!")
 	}
 
-	subParams := sender.SubscriptionParams{}
-	rElem := reflect.ValueOf(&subParams).Elem()
+	subParams := sender.NewSubscriptionParams()
+	rElem := reflect.ValueOf(subParams).Elem()
 	for n, v := range newParams {
 		rElemField := rElem.FieldByName(n)
 		if rElemField.IsValid() {
@@ -84,6 +84,6 @@ func (i SetSubscriptionParams) Process(args map[string]interface{}) (re interfac
 			rElemField.Set(reflect.ValueOf(v))
 		}
 	}
-	sErr := sender.SetSubscriptionParams(subscriptionId, subParams)
+	sErr := sender.SetSubscriptionParams(subscriptionId, *subParams)
 	return sErr == nil, sErr
 }

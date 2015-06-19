@@ -1,16 +1,5 @@
 package broker
 
-type Config struct {
-	// Broker type
-	Type    string
-	NetType string
-	Addr    string
-}
-
-type BrokerInfo struct {
-	Name string
-}
-
 var validBrokers = map[string]BrokerInfo{"beanstalk": BrokerInfo{"beanstalk"}}
 
 var brokerConnAvailTestRWLock = make(chan int8, 1)

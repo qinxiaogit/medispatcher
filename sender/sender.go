@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
 	"medispatcher/broker"
 	"medispatcher/config"
 	"medispatcher/data"
@@ -18,6 +17,8 @@ import (
 
 // StartAndWait starts the recover process until Stop is called.
 func StartAndWait() {
+	senderErrorMonitor = newErrorMonitor()
+	senderErrorMonitor.start()
 	for !shouldExit() {
 		subscriptions, err := data.GetAllSubscriptionsWithCache()
 		if err != nil {
@@ -39,9 +40,9 @@ func StartAndWait() {
 					break
 				}
 			}
-			if !enabled{
+			if !enabled {
 				status := senderRoutineStats.getStatus(id)
-				if status != nil{
+				if status != nil {
 					status.sigChan <- SENDER_ROUTINE_SIG_EXIT_ALL_ROUTINES
 					senderRoutineStats.removeStatus(id)
 				}
@@ -72,16 +73,14 @@ func StartAndWait() {
 
 // handel a subscription.
 func handleSubscription(sub data.SubscriptionRecord) {
-	subParams := &SubscriptionParams{}
+	subParams := NewSubscriptionParams()
 	err := subParams.Load(sub.Subscription_id)
 
 	if err != nil {
 		logger.GetLogger("INFO").Printf("Failed to load subscription params: %v, ignore customized subscription performance params.", err)
 	}
 
-	if err != nil {
-		subParams.Concurrency = config.GetConfig().SendersPerChannel
-	} else if subParams.Concurrency > config.GetConfig().MaxSendersPerChannel {
+	if subParams.Concurrency > config.GetConfig().MaxSendersPerChannel {
 		subParams.Concurrency = config.GetConfig().MaxSendersPerChannel
 	}
 
@@ -91,9 +90,7 @@ func handleSubscription(sub data.SubscriptionRecord) {
 		subParams.ProcessTimeout = config.GetConfig().MaxMessageProcessTime
 	}
 
-	if err != nil {
-		subParams.ConcurrencyOfRetry = config.GetConfig().SendersPerRetryChannel
-	} else if subParams.ConcurrencyOfRetry > config.GetConfig().MaxSendersPerRetryChannel {
+	if subParams.ConcurrencyOfRetry > config.GetConfig().MaxSendersPerRetryChannel {
 		subParams.ConcurrencyOfRetry = config.GetConfig().MaxSendersPerRetryChannel
 	}
 
@@ -300,7 +297,7 @@ func sendSubscription(sub data.SubscriptionRecord, sossr *StatusOfSubSenderRouti
 					sentSuccess = false
 					// subscription parameters may changes dynamically, while "sub" object won't  until the dispatcher service is restarted.
 					procesTimeout := sossr.GetSubParams().ProcessTimeout
-					receptionUri  := sossr.GetSubParams().ReceptionUri
+					receptionUri := sossr.GetSubParams().ReceptionUri
 					if procesTimeout > 0 {
 						sub.Timeout = procesTimeout
 					}
@@ -384,6 +381,12 @@ func sendSubscription(sub data.SubscriptionRecord, sossr *StatusOfSubSenderRouti
 							msg.Body,
 						)
 					}
+
+					if !sentSuccess && sossr.GetSubParams().AlerterEnabled {
+						senderErrorMonitor.addSubscriptionCheck(&sub, sossr.GetSubParams())
+						senderErrorMonitor.addMessageCheck(&sub, sossr.GetSubParams(), logId, errMsgInSending, 1)
+					}
+
 					elapsed := time.Now().Sub(timerOfSendingInterval)
 
 					minInterval := sossr.GetSubParams().IntervalOfSending
@@ -412,7 +415,7 @@ func sendSubscriptionAsRetry(sub data.SubscriptionRecord, sossr *StatusOfSubSend
 		br                     broker.Broker
 		brPt                   *broker.Broker
 		err, sendingErr        error
-		jobId                  uint64
+		jobId, logId           uint64
 		jobBody                []byte
 		httpStatusCode         int
 		returnData             []byte
@@ -477,7 +480,7 @@ func sendSubscriptionAsRetry(sub data.SubscriptionRecord, sossr *StatusOfSubSend
 					sentSuccess = false
 					// subscription parameters may changes dynamically, while "sub" object won't  until the dispatcher service is restarted.
 					procesTimeout := sossr.GetSubParams().ProcessTimeout
-					receptionUri  := sossr.GetSubParams().ReceptionUri
+					receptionUri := sossr.GetSubParams().ReceptionUri
 					if procesTimeout > 0 {
 						sub.Timeout = procesTimeout
 					}
@@ -546,7 +549,7 @@ func sendSubscriptionAsRetry(sub data.SubscriptionRecord, sossr *StatusOfSubSend
 						} else {
 							errMsgInSending = fmt.Sprintf("Code: %v\nContent:\n\t%s", httpStatusCode, returnData)
 						}
-						logId, err := data.LogFailure(msg, sub, errMsgInSending, msg.LogId, genUniqueJobId(msg.Time, msg.OriginJobId, sub.Subscription_id))
+						logId, err = data.LogFailure(msg, sub, errMsgInSending, msg.LogId, genUniqueJobId(msg.Time, msg.OriginJobId, sub.Subscription_id))
 						if err != nil {
 							logger.GetLogger("WARN").Printf("Failed to log failure: %v", err)
 						}
@@ -564,6 +567,10 @@ func sendSubscriptionAsRetry(sub data.SubscriptionRecord, sossr *StatusOfSubSend
 							fmt.Sprintf("%.3f", float64(et.Sub(st).Nanoseconds())/1e6),
 							sub.Reception_channel, msg.Body,
 						)
+					}
+					if !sentSuccess && sossr.GetSubParams().AlerterEnabled {
+						senderErrorMonitor.addSubscriptionCheck(&sub, sossr.GetSubParams())
+						senderErrorMonitor.addMessageCheck(&sub, sossr.GetSubParams(), logId, errMsgInSending, msg.RetryTimes)
 					}
 				}
 			}
@@ -610,7 +617,7 @@ func transferSubscriptionViaHttp(msg *data.MessageStuct, sub *data.SubscriptionR
 }
 
 func putToRetryChannel(br *broker.Broker, sub *data.SubscriptionRecord, msg *data.MessageStuct, stats *map[string]interface{}) error {
-	delay := math.Pow(float64((*msg).RetryTimes+1), float64(2)) * float64(config.GetConfig().CoeOfIntervalForRetrySendingMsg)
+	delay := getRetryDelay(msg.RetryTimes + 1, config.GetConfig().CoeOfIntervalForRetrySendingMsg)
 	msgData, err := data.SerializeMessage(*msg)
 	if err != nil {
 		return errors.New(fmt.Sprintf("Failed to serialize msg: %v", err))

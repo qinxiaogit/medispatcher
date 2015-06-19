@@ -34,7 +34,7 @@ func (i GetSubscriptionParams) Process(args map[string]interface{}) (re interfac
 		return nil, errors.New("Invalid type of argument 'SubscrpitonId'!")
 	}
 
-	subParams := sender.SubscriptionParams{}
+	subParams := sender.NewSubscriptionParams()
 	subParams.Load(subscriptionId)
 	return subParams, nil
 }
