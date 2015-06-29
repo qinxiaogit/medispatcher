@@ -32,7 +32,7 @@ const (
 	MESSAGE_FAILURE_ALERT_THRESHOLD = 7
 	// When sending messages for the subscription failed and the failed times reached the threshold in a specified period,
 	// the alert should be sent.
-	SUBSCRIPTION_TOTAL_FAILURE_ALERT_THRESHOLD = 50
+	SUBSCRIPTION_TOTAL_FAILURE_ALERT_THRESHOLD = 120
 	MESSAGE_BLOCKED_ALERT_THRESHOLD            = 5000
 )
 
