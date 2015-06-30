@@ -22,7 +22,7 @@ func UnserializeMessage(dataB []byte) (msg MessageStuct, err error) {
 			// Hot fixing for type
 			switch field {
 				case "OriginJobId","LogId", "RetryTimes":
-					value, err = strconv.Atoi(fmt.Sprintf("%v", value))
+					value, err = strconv.ParseInt(fmt.Sprintf("%v", value), 10, 64)
 				case "Time":
 					value, err = strconv.ParseFloat(fmt.Sprintf("%v", value), 64)
 			}

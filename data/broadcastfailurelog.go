@@ -2,10 +2,10 @@ package data
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
-	"encoding/json"
 )
 
 type FailureLogRecord struct {
@@ -33,7 +33,7 @@ type FailureLogRecord struct {
 // Add or update a failure log. Invoke this function when the last sending is failed.
 // jobId is unique jobid in format: {timestamp}-{MQ jobid}-{subscription_id}
 func LogFailure(message MessageStuct, subscription SubscriptionRecord, errorMessage string, logId uint64, jobId string) (newLogId uint64, err error) {
-	if logId >0 {
+	if logId > 0 {
 		_, err = FailureLogExists(logId)
 		if err != nil {
 			err = errors.New(fmt.Sprintf("Failed to check existing log: %v", err))
@@ -84,7 +84,7 @@ func LogFailure(message MessageStuct, subscription SubscriptionRecord, errorMess
 		sqlStr := fmt.Sprintf(`
 		UPDATE %s SET
 		last_failure_message=?
-		WHERE log_id=?`, DB_TABLE_BROADCAST_FAILURE_LOG )
+		WHERE log_id=?`, DB_TABLE_BROADCAST_FAILURE_LOG)
 		_, err = db.Exec(sqlStr, errorMessage, logId)
 		if err != nil {
 			err = errors.New(fmt.Sprintf("Failed to update log: %v : SQL: %v", err, sqlStr))
@@ -171,7 +171,7 @@ func SetFinalStatusOfFailureLog(logId uint64, status uint8, alive uint8, retryTi
 	}
 	defer db.Release()
 	var last_retry_time int64
-	if retryTimes > 0{
+	if retryTimes > 0 {
 		last_retry_time = time.Now().Unix()
 	}
 	_, err = db.Exec(sql, status, alive, retryTimes, last_retry_time, logId)
