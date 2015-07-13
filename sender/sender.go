@@ -585,7 +585,7 @@ func sendSubscriptionAsRetry(sub data.SubscriptionRecord, sossr *StatusOfSubSend
 					}
 					if !sentSuccess && sossr.GetSubParams().AlerterEnabled {
 						senderErrorMonitor.addSubscriptionCheck(&sub, sossr.GetSubParams())
-						senderErrorMonitor.addMessageCheck(&sub, sossr.GetSubParams(), logId, errMsgInSending, msg.RetryTimes)
+						senderErrorMonitor.addMessageCheck(&sub, sossr.GetSubParams(), msg.LogId, errMsgInSending, msg.RetryTimes)
 					}
 				}
 			}
