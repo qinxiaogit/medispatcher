@@ -209,8 +209,8 @@ func (em *errorMonitor) addMessageCheck(sub *data.SubscriptionRecord, subParam S
 // Check queued message blocks every 5 seconds.
 func (em *errorMonitor) checkQueueBlocks() {
 	var (
-		brPt                     *broker.Broker
 		br                       broker.Broker
+		brConnected              bool
 		stats, reQueueStats      map[string]interface{}
 		errOfQueue, errOfReQueue error
 	)
@@ -238,24 +238,22 @@ func (em *errorMonitor) checkQueueBlocks() {
 				}
 				queueName := config.GetChannelName(sub.Class_key, sub.Subscription_id)
 				reQueueName := config.GetChannelNameForReSend(sub.Class_key, sub.Subscription_id)
-				if brPt == nil {
-					brPt = broker.GetBrokerWitBlock(INTERVAL_OF_RETRY_ON_CONN_FAIL, shouldExit)
-					if brPt == nil {
+				if !brConnected {
+					br, err = broker.GetBrokerWitBlock(INTERVAL_OF_RETRY_ON_CONN_FAIL, shouldExit)
+					if err != nil {
 						break
 					} else {
-						br = *brPt
+						brConnected = true
 					}
-
 				}
 				stats, errOfQueue = br.StatsTopic(queueName)
 				reQueueStats, errOfReQueue = br.StatsTopic(reQueueName)
-				if errOfQueue != nil && errOfQueue.Error() == broker.ERROR_CONN_CLOSED {
-					br.Close()
-					brPt = nil
+				if errOfQueue != nil && (errOfQueue.Error() == broker.ERROR_CONN_CLOSED || errOfQueue.Error() == broker.ERROR_CONN_BROKEN){
+					brConnected = false
 				}
-				if errOfReQueue != nil && errOfReQueue.Error() == broker.ERROR_CONN_CLOSED {
+				if errOfReQueue != nil && (errOfReQueue.Error() == broker.ERROR_CONN_CLOSED || errOfQueue.Error() == broker.ERROR_CONN_BROKEN) {
 					br.Close()
-					brPt = nil
+					brConnected = false
 				}
 				if errOfQueue == nil || errOfReQueue == nil {
 					// TODO: assertion failed. if assertion success with ZERO value, the assertion result still holds false (bug of golang?).

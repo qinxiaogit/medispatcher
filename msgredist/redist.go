@@ -29,7 +29,6 @@ func StartAndWait() {
 func redistMainQueue(sigChan *chan int8) {
 	var brokerConnected bool
 	var br broker.Broker
-	var brPt *broker.Broker
 	var err error
 	defer func() {
 		err := recover()
@@ -41,11 +40,10 @@ func redistMainQueue(sigChan *chan int8) {
 
 	for !shouldExit() {
 		if !brokerConnected {
-			brPt = broker.GetBrokerWitBlock(INTERVAL_OF_RETRY_ON_CONN_FAIL, shouldExit)
-			if brPt == nil {
+			br,err = broker.GetBrokerWitBlock(INTERVAL_OF_RETRY_ON_CONN_FAIL, shouldExit)
+			if err != nil {
 				continue
 			}
-			br = *brPt
 			brokerConnected = true
 			// ensure successful watching
 			for {
@@ -53,7 +51,7 @@ func redistMainQueue(sigChan *chan int8) {
 				if err != nil {
 					logger.GetLogger("WARN").Printf("Failed to watch main queue: %v", err)
 					switch err.Error() {
-					case broker.ERROR_CONN_CLOSED:
+					case broker.ERROR_CONN_CLOSED, broker.ERROR_CONN_BROKEN:
 						brokerConnected = false
 					}
 				} else {
@@ -69,6 +67,8 @@ func redistMainQueue(sigChan *chan int8) {
 			// disconnected during watching, then retry connecting.
 			if !brokerConnected {
 				continue
+			} else {
+				time.Sleep(time.Second * INTERVAL_OF_RETRY_ON_CONN_FAIL)
 			}
 		}
 
@@ -132,25 +132,35 @@ func redistMainQueue(sigChan *chan int8) {
 						switch err.Error() {
 						case broker.ERROR_JOB_NOT_FOUND:
 							jobDeleted = true
-						case broker.ERROR_CONN_CLOSED:
+						// TODO: unknown reason.
+						case "RESERVED", "TIMED_OUT":
+							logger.GetLogger("WARN").Printf("Deleting  of job[%v] may failed! %v", jobId, err)
+							time.Sleep(time.Second * (INTERVAL_OF_RETRY_ON_CONN_FAIL * 2))
+						case broker.ERROR_CONN_CLOSED, broker.ERROR_CONN_BROKEN:
 							// retrieve a usable broker.
-							// if brPt is nil means the medispatcher service should exit,
+							// if br is nil means the medispatcher service should exit,
 							// so the deleting is to fail, then fallthrough to log the failure.
-							brPt = broker.GetBrokerWitBlock(INTERVAL_OF_RETRY_ON_CONN_FAIL, shouldExit)
-							if brPt != nil {
-								br = *brPt
+							br, err = broker.GetBrokerWitBlock(INTERVAL_OF_RETRY_ON_CONN_FAIL, shouldExit)
+							// in exiting stage
+							if err != nil{
+								logger.GetLogger("WARN").Printf("Job may not be deleted : in exiting stage.%v", jobId)
+								jobDeleted = true
+								brokerConnected = false
 							}
 							fallthrough
 						default:
 							logger.GetLogger("WARN").Printf("Failed to delete job: %v : %v", err, jobId)
+							time.Sleep(time.Second * (INTERVAL_OF_RETRY_ON_CONN_FAIL * 2))
 						}
 					}
 				}
 			}
-		}
+		} else {
 
-		if err != nil && err.Error() == broker.ERROR_CONN_CLOSED {
-			brokerConnected = false
+			if err.Error() == broker.ERROR_CONN_CLOSED || err.Error() == broker.ERROR_CONN_BROKEN{
+				logger.GetLogger("WARN").Printf("Connection lost when waiting message from queue server: %v. Retry later.", err)
+				brokerConnected = false
+			}
 		}
 	}
 	if brokerConnected {

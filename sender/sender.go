@@ -228,7 +228,7 @@ func handleSubscription(sub data.SubscriptionRecord) {
 func sendSubscription(sub data.SubscriptionRecord, sossr *StatusOfSubSenderRoutine, ch *chan SubSenderRoutineChanSig) {
 	var (
 		br                     broker.Broker
-		brPt                   *broker.Broker
+		brConnected            bool
 		err                    error
 		jobId, logId           uint64
 		jobBody                []byte
@@ -240,7 +240,7 @@ func sendSubscription(sub data.SubscriptionRecord, sossr *StatusOfSubSenderRouti
 		timerOfSendingInterval time.Time
 	)
 	defer func() {
-		if brPt != nil {
+		if brConnected {
 			br.Close()
 		}
 		err := recover()
@@ -259,16 +259,16 @@ func sendSubscription(sub data.SubscriptionRecord, sossr *StatusOfSubSenderRouti
 			}
 		default:
 			timerOfSendingInterval = time.Now()
-			if brPt == nil {
-				brPt = broker.GetBrokerWitBlock(INTERVAL_OF_RETRY_ON_CONN_FAIL, shouldExit)
-				if brPt != nil {
-					br = *brPt
+			if !brConnected {
+				br, err = broker.GetBrokerWitBlock(INTERVAL_OF_RETRY_ON_CONN_FAIL, shouldExit)
+				if err == nil {
+					brConnected = true
 					err = br.Watch(queueName)
 					if err != nil {
 						logger.GetLogger("WARN").Printf("Failed to watch sub channel queue: %v : %v", queueName, err)
 						switch err.Error() {
-						case broker.ERROR_CONN_CLOSED:
-							brPt = nil
+						case broker.ERROR_CONN_CLOSED, broker.ERROR_CONN_BROKEN:
+							br = nil
 						}
 					} else {
 						time.Sleep(time.Second * INTERVAL_OF_RETRY_ON_CONN_FAIL)
@@ -276,7 +276,9 @@ func sendSubscription(sub data.SubscriptionRecord, sossr *StatusOfSubSenderRouti
 					}
 				}
 			}
-			if brPt == nil {
+
+			// retry in next loop
+			if !brConnected {
 				continue
 			}
 			jobId, jobBody, err = br.ReserveWithTimeout(DEFAULT_RESERVE_TIMEOUT)
@@ -284,8 +286,8 @@ func sendSubscription(sub data.SubscriptionRecord, sossr *StatusOfSubSenderRouti
 				if err.Error() != broker.ERROR_JOB_RESERVE_TIMEOUT {
 					logger.GetLogger("WARN").Printf("Failed to reserve job from sub channel queue: %v : %v", queueName, err)
 				}
-				if err.Error() == broker.ERROR_CONN_CLOSED {
-					brPt = nil
+				if err.Error() == broker.ERROR_CONN_CLOSED || err.Error() == broker.ERROR_CONN_BROKEN {
+					brConnected = false
 					continue
 				}
 
@@ -360,7 +362,7 @@ func sendSubscription(sub data.SubscriptionRecord, sossr *StatusOfSubSenderRouti
 							}
 
 						} else {
-							err = putToRetryChannel(brPt, &sub, &msg, &jobStats)
+							err = putToRetryChannel(br, &sub, &msg, &jobStats)
 							if err != nil {
 								logger.GetLogger("WARN").Print(err)
 								br.Release(jobId, jobStats["pri"].(uint32), 1)
@@ -420,7 +422,7 @@ func sendSubscription(sub data.SubscriptionRecord, sossr *StatusOfSubSenderRouti
 func sendSubscriptionAsRetry(sub data.SubscriptionRecord, sossr *StatusOfSubSenderRoutine, ch *chan SubSenderRoutineChanSig) {
 	var (
 		br                     broker.Broker
-		brPt                   *broker.Broker
+		brConnected            bool
 		err, sendingErr        error
 		jobId, logId           uint64
 		jobBody                []byte
@@ -434,7 +436,7 @@ func sendSubscriptionAsRetry(sub data.SubscriptionRecord, sossr *StatusOfSubSend
 	)
 
 	defer func() {
-		if brPt != nil {
+		if brConnected {
 			br.Close()
 		}
 		err := recover()
@@ -453,16 +455,16 @@ func sendSubscriptionAsRetry(sub data.SubscriptionRecord, sossr *StatusOfSubSend
 			}
 		default:
 			timerOfSendingInterval = time.Now()
-			if brPt == nil {
-				brPt = broker.GetBrokerWitBlock(INTERVAL_OF_RETRY_ON_CONN_FAIL, shouldExit)
-				if brPt != nil {
-					br = *brPt
+			if !brConnected {
+				br, err = broker.GetBrokerWitBlock(INTERVAL_OF_RETRY_ON_CONN_FAIL, shouldExit)
+				if err == nil {
+					brConnected = true
 					err = br.Watch(queueName)
 					if err != nil {
 						logger.GetLogger("WARN").Printf("Failed to watch sub channel queue of resend: %v : %v. Retry later.", queueName, err)
 						switch err.Error() {
-						case broker.ERROR_CONN_CLOSED:
-							brPt = nil
+						case broker.ERROR_CONN_CLOSED , broker.ERROR_CONN_BROKEN:
+							brConnected = false
 						}
 					} else {
 						time.Sleep(time.Second * INTERVAL_OF_RETRY_ON_CONN_FAIL)
@@ -470,7 +472,7 @@ func sendSubscriptionAsRetry(sub data.SubscriptionRecord, sossr *StatusOfSubSend
 					}
 				}
 			}
-			if brPt == nil {
+			if !brConnected {
 				continue
 			}
 			jobId, jobBody, err = br.ReserveWithTimeout(DEFAULT_RESERVE_TIMEOUT)
@@ -478,8 +480,8 @@ func sendSubscriptionAsRetry(sub data.SubscriptionRecord, sossr *StatusOfSubSend
 				if err.Error() != broker.ERROR_JOB_RESERVE_TIMEOUT {
 					logger.GetLogger("WARN").Printf("Failed to reserve job from sub channel queue of resend: %v : %v", queueName, err)
 				}
-				if err.Error() == broker.ERROR_CONN_CLOSED {
-					brPt = nil
+				if err.Error() == broker.ERROR_CONN_CLOSED || err.Error() == broker.ERROR_CONN_BROKEN {
+					brConnected = false
 					continue
 				}
 
@@ -542,7 +544,7 @@ func sendSubscriptionAsRetry(sub data.SubscriptionRecord, sossr *StatusOfSubSend
 						if err != nil {
 							logger.GetLogger("WARN").Printf("Failed to stats job when puting to retry channel: %v", err)
 						} else {
-							err = putToRetryChannel(brPt, &sub, &msg, &jobStats)
+							err = putToRetryChannel(br, &sub, &msg, &jobStats)
 							if err != nil {
 								logger.GetLogger("WARN").Print(err)
 								br.Release(jobId, jobStats["pri"].(uint32), 1)
@@ -644,17 +646,17 @@ func transferSubscriptionViaHttp(msg *data.MessageStuct, sub *data.SubscriptionR
 	return httproxy.Transfer(subUrl.String(), postFields, time.Millisecond*time.Duration((*sub).Timeout))
 }
 
-func putToRetryChannel(br *broker.Broker, sub *data.SubscriptionRecord, msg *data.MessageStuct, stats *map[string]interface{}) error {
+func putToRetryChannel(br broker.Broker, sub *data.SubscriptionRecord, msg *data.MessageStuct, stats *map[string]interface{}) error {
 	delay := getRetryDelay(msg.RetryTimes+1, config.GetConfig().CoeOfIntervalForRetrySendingMsg)
 	msgData, err := data.SerializeMessage(*msg)
 	if err != nil {
 		return errors.New(fmt.Sprintf("Failed to serialize msg: %v", err))
 	}
-	err = (*br).Use(config.GetChannelNameForReSend((*msg).MsgKey, (*sub).Subscription_id))
+	err = br.Use(config.GetChannelNameForReSend((*msg).MsgKey, (*sub).Subscription_id))
 	if err != nil {
 		return errors.New(fmt.Sprintf("Failed to use channel when put message to retry channel: %v", err))
 	}
-	_, err = (*br).Pub(broker.DEFAULT_MSG_PRIORITY, uint64(delay), (*stats)["ttr"].(uint64), msgData)
+	_, err = br.Pub(broker.DEFAULT_MSG_PRIORITY, uint64(delay), (*stats)["ttr"].(uint64), msgData)
 	if err != nil {
 		return errors.New(fmt.Sprintf("Failed to put message to retry channel: %v", err))
 	}
