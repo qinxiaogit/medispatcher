@@ -251,7 +251,7 @@ func (em *errorMonitor) checkQueueBlocks() {
 				if errOfQueue != nil && (errOfQueue.Error() == broker.ERROR_CONN_CLOSED || errOfQueue.Error() == broker.ERROR_CONN_BROKEN){
 					brConnected = false
 				}
-				if errOfReQueue != nil && (errOfReQueue.Error() == broker.ERROR_CONN_CLOSED || errOfQueue.Error() == broker.ERROR_CONN_BROKEN) {
+				if errOfReQueue != nil && (errOfReQueue.Error() == broker.ERROR_CONN_CLOSED || errOfReQueue.Error() == broker.ERROR_CONN_BROKEN) {
 					br.Close()
 					brConnected = false
 				}

@@ -16,7 +16,7 @@ func New(hostAddr string) (br *BrokerBeanstalk, err error) {
 	if err != nil {
 		return
 	}
-	r := bufio.NewReader(conn)
+	r := bufio.NewReaderSize(conn, 102400)
 	w := bufio.NewWriter(conn)
 	br = &BrokerBeanstalk{}
 	br.Client = beanstalkc.Client{

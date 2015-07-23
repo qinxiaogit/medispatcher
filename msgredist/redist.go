@@ -71,7 +71,6 @@ func redistMainQueue(sigChan *chan int8) {
 				time.Sleep(time.Second * INTERVAL_OF_RETRY_ON_CONN_FAIL)
 			}
 		}
-
 		// need to use ReserveWithTimeout rather than Reserve, in order to have chance to take care of the exit signal.
 		jobId, jobBody, err := br.ReserveWithTimeout(DEFAULT_RESERVE_TIMEOUT)
 		if err == nil {
@@ -156,10 +155,11 @@ func redistMainQueue(sigChan *chan int8) {
 				}
 			}
 		} else {
-
 			if err.Error() == broker.ERROR_CONN_CLOSED || err.Error() == broker.ERROR_CONN_BROKEN{
-				logger.GetLogger("WARN").Printf("Connection lost when waiting message from queue server: %v. Retry later.", err)
+				logger.GetLogger("WARN").Printf("Connection lost when waiting for message from queue server: %v. Retry later.", err)
 				brokerConnected = false
+			} else if err.Error() != broker.ERROR_JOB_RESERVE_TIMEOUT{
+				logger.GetLogger("WARN").Printf("Unexpected error when waiting for message from queue server: %v ", err)
 			}
 		}
 	}
