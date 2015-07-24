@@ -375,14 +375,20 @@ func sendSubscription(sub data.SubscriptionRecord, sossr *StatusOfSubSenderRouti
 						}
 					}
 					if config.GetConfig().EnableMsgSentLog {
-						logger.GetLogger("DATA").Printf("SENT key:%v result:%v code:%v elapse:%vms dest:%v DATA: %+v",
-							msg.MsgKey,
-							sentSuccess,
-							httpStatusCode,
-							fmt.Sprintf("%.3f", float64(et.Sub(st).Nanoseconds())/1e6),
-							sub.Reception_channel,
-							msg.Body,
-						)
+
+						msgBody, logErr := json.Marshal(msg.Body)
+						if logErr != nil {
+							logger.GetLogger("WARN").Printf("Failed to log sent message: %v.", logErr)
+						} else {
+							logger.GetLogger("DATA").Printf("SENT key:%v result:%v code:%v elapse:%vms dest:%v DATA: %v",
+								msg.MsgKey,
+								sentSuccess,
+								httpStatusCode,
+								fmt.Sprintf("%.3f", float64(et.Sub(st).Nanoseconds())/1e6),
+								sub.Reception_channel,
+								string(msgBody),
+							)
+						}
 					}
 
 					if !sentSuccess && sossr.GetSubParams().AlerterEnabled {
@@ -577,13 +583,18 @@ func sendSubscriptionAsRetry(sub data.SubscriptionRecord, sossr *StatusOfSubSend
 						}
 					}
 					if config.GetConfig().EnableMsgSentLog {
-						logger.GetLogger("DATA").Printf("RESENT key:%v result:%v code:%v elapse:%vms dest:%v DATA: %+v",
-							msg.MsgKey,
-							sentSuccess,
-							httpStatusCode,
-							fmt.Sprintf("%.3f", float64(et.Sub(st).Nanoseconds())/1e6),
-							sub.Reception_channel, msg.Body,
-						)
+						msgBody, logErr := json.Marshal(msg.Body)
+						if logErr != nil {
+							logger.GetLogger("WARN").Printf("Failed to log sent message: %v.", logErr)
+						} else {
+							logger.GetLogger("DATA").Printf("RESENT key:%v result:%v code:%v elapse:%vms dest:%v DATA: %v",
+								msg.MsgKey,
+								sentSuccess,
+								httpStatusCode,
+								fmt.Sprintf("%.3f", float64(et.Sub(st).Nanoseconds())/1e6),
+								sub.Reception_channel, string(msgBody),
+							)
+						}
 					}
 					if !sentSuccess && sossr.GetSubParams().AlerterEnabled {
 						senderErrorMonitor.addSubscriptionCheck(&sub, sossr.GetSubParams())
