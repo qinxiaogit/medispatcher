@@ -10,7 +10,7 @@ import (
 )
 
 // Transfer acts a http post request.
-// TODO: keep-alive
+// TODO: keep-alive on connection pool
 func Transfer(addr string, data map[string]string, timeout time.Duration) (httpStatusCode int, respData []byte, err error) {
 	tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
 	client := &http.Client{Timeout: timeout, Transport: tr}
@@ -22,7 +22,7 @@ func Transfer(addr string, data map[string]string, timeout time.Duration) (httpS
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("User-Agent", "MEDipatcher/2.0.0-alpha")
 	req.Header.Set("Accept", "*/*")
-//	req.Header.Set("Connection", "keep-alive")
+	req.Header.Set("Connection", "close")
 //	req.Header.Set("Keep-Alive", "300")
 	resp, err := client.Do(req)
 	if err != nil {
