@@ -5,6 +5,7 @@ import "medispatcher/Alerter"
 type Config struct {
 	// ListenAddr is the network address for providing extra api calls.
 	ListenAddr string
+	StatisticApiAddr string
 	InstallDir string
 	PidFile    string
 	LOG_DIR    string
