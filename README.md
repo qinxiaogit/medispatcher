@@ -33,6 +33,14 @@ First release of v2.
  </pre>
 
 * Above parameters take effects instantly. Do not requires dispatcher service restarting or reloading.
+
+### 2.2.0
+2.2.0 release(refers to the git tag).    
+
+* Alerts when message processing failures reaches certain thresholds.   
+* Customizable config file    
+ e.g. medispatcher /path/to/config/file
+* Multiple message processing worker url support. The urls can be multi-lined, each line represents a separate worker url. This achieves a soft load balance.
  
 ## Milestone
 
@@ -44,7 +52,10 @@ First release of v2.
  
 ### 2.2.0
 ####Features    
-* Alerters when message processing failures reaches certain thresholds.    
+* Alerts when message processing failures reaches certain thresholds.   
+* Customizable config file    
+ e.g. medispatcher /path/to/config/file
+* Multiple message processing worker url support. The urls can be multi-lined, each line represents a separate worker url. This achieves a soft load balance. 
 
 ### 2.3.0
 ####Features
