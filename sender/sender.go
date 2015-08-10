@@ -13,6 +13,8 @@ import (
 	"net/url"
 	"strconv"
 	"time"
+	"strings"
+	"math/rand"
 )
 
 // StartAndWait starts the recover process until Stop is called.
@@ -633,7 +635,9 @@ func transferSubscriptionViaHttp(msg *data.MessageStuct, sub *data.SubscriptionR
 	var subUrl *url.URL
 	var msgBody []byte
 	uniqJobId := genUniqueJobId((*msg).Time, (*msg).OriginJobId, (*sub).Subscription_id)
-	subUrl, err = url.Parse(sub.Reception_channel)
+	subUrls := strings.Split(sub.Reception_channel, "\n")
+	rand.Seed(int64(time.Now().Nanosecond()))
+	subUrl, err = url.Parse(subUrls[rand.Intn(len(subUrls))])
 	if err != nil {
 		httpStatusCode = -2
 		err = errors.New(fmt.Sprintf("Failed to parse subscription url: %v : %v", (*sub).Reception_channel, err))
