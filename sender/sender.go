@@ -310,7 +310,8 @@ func sendSubscription(sub data.SubscriptionRecord, sossr *StatusOfSubSenderRouti
 						sub.Reception_channel = receptionUri
 					}
 					st := time.Now()
-					httpStatusCode, returnData, err = transferSubscriptionViaHttp(&msg, &sub, 0)
+					var sendUrl string
+					sendUrl, httpStatusCode, returnData, err = transferSubscriptionViaHttp(&msg, &sub, 0)
 					et := time.Now()
 					if httpStatusCode == 200 {
 						err = json.Unmarshal(returnData, &respd)
@@ -387,7 +388,7 @@ func sendSubscription(sub data.SubscriptionRecord, sossr *StatusOfSubSenderRouti
 								sentSuccess,
 								httpStatusCode,
 								fmt.Sprintf("%.3f", float64(et.Sub(st).Nanoseconds())/1e6),
-								sub.Reception_channel,
+								sendUrl,
 								string(msgBody),
 							)
 						}
@@ -513,7 +514,8 @@ func sendSubscriptionAsRetry(sub data.SubscriptionRecord, sossr *StatusOfSubSend
 						sub.Reception_channel = receptionUri
 					}
 					st := time.Now()
-					httpStatusCode, returnData, sendingErr = transferSubscriptionViaHttp(&msg, &sub, msg.RetryTimes)
+					var sendUrl string
+					sendUrl, httpStatusCode, returnData, sendingErr = transferSubscriptionViaHttp(&msg, &sub, msg.RetryTimes)
 					et := time.Now()
 					if httpStatusCode == 200 {
 						err = json.Unmarshal(returnData, &respd)
@@ -594,7 +596,7 @@ func sendSubscriptionAsRetry(sub data.SubscriptionRecord, sossr *StatusOfSubSend
 								sentSuccess,
 								httpStatusCode,
 								fmt.Sprintf("%.3f", float64(et.Sub(st).Nanoseconds())/1e6),
-								sub.Reception_channel, string(msgBody),
+								sendUrl, string(msgBody),
 							)
 						}
 					}
@@ -631,7 +633,7 @@ func sendSubscriptionAsRetry(sub data.SubscriptionRecord, sossr *StatusOfSubSend
 	}
 }
 
-func transferSubscriptionViaHttp(msg *data.MessageStuct, sub *data.SubscriptionRecord, retryTimes uint16) (httpStatusCode int, returnData []byte, err error) {
+func transferSubscriptionViaHttp(msg *data.MessageStuct, sub *data.SubscriptionRecord, retryTimes uint16) (sendUrl string, httpStatusCode int, returnData []byte, err error) {
 	var subUrl *url.URL
 	var msgBody []byte
 	uniqJobId := genUniqueJobId((*msg).Time, (*msg).OriginJobId, (*sub).Subscription_id)
@@ -658,7 +660,8 @@ func transferSubscriptionViaHttp(msg *data.MessageStuct, sub *data.SubscriptionR
 		return
 	}
 	postFields["message"] = string(msgBody)
-	return httproxy.Transfer(subUrl.String(), postFields, time.Millisecond*time.Duration((*sub).Timeout))
+	httpStatusCode, returnData, err = httproxy.Transfer(subUrl.String(), postFields, time.Millisecond*time.Duration((*sub).Timeout))
+	return subUrl.String(), httpStatusCode, returnData, err
 }
 
 func putToRetryChannel(br broker.Broker, sub *data.SubscriptionRecord, msg *data.MessageStuct, stats *map[string]interface{}) error {
