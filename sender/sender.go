@@ -340,6 +340,7 @@ func sendSubscription(sub data.SubscriptionRecord, sossr *StatusOfSubSenderRouti
 						} else {
 							errMsgInSending = fmt.Sprintf("Code: %v\nContent:\n\t%s", httpStatusCode, returnData)
 						}
+						sub.Reception_channel = sendUrl
 						logId, err = data.LogFailure(msg, sub, errMsgInSending, 0, genUniqueJobId(msg.Time, msg.OriginJobId, sub.Subscription_id))
 						if err != nil {
 							logger.GetLogger("WARN").Printf("Failed to log failure: %v", err)
@@ -576,6 +577,7 @@ func sendSubscriptionAsRetry(sub data.SubscriptionRecord, sossr *StatusOfSubSend
 						} else {
 							errMsgInSending = fmt.Sprintf("Code: %v\nContent:\n\t%s", httpStatusCode, returnData)
 						}
+						sub.Reception_channel = sendUrl
 						logId, err = data.LogFailure(msg, sub, errMsgInSending, msg.LogId, genUniqueJobId(msg.Time, msg.OriginJobId, sub.Subscription_id))
 						if err != nil {
 							logger.GetLogger("WARN").Printf("Failed to log failure: %v", err)
@@ -639,7 +641,7 @@ func transferSubscriptionViaHttp(msg *data.MessageStuct, sub *data.SubscriptionR
 	uniqJobId := genUniqueJobId((*msg).Time, (*msg).OriginJobId, (*sub).Subscription_id)
 	subUrls := strings.Split(sub.Reception_channel, "\n")
 	rand.Seed(int64(time.Now().Nanosecond()))
-	subUrl, err = url.Parse(subUrls[rand.Intn(len(subUrls))])
+	subUrl, err = url.Parse(strings.TrimSpace(subUrls[rand.Intn(len(subUrls))]))
 	if err != nil {
 		httpStatusCode = -2
 		err = errors.New(fmt.Sprintf("Failed to parse subscription url: %v : %v", (*sub).Reception_channel, err))

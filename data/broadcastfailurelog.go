@@ -65,6 +65,7 @@ func LogFailure(message MessageStuct, subscription SubscriptionRecord, errorMess
 		data["last_failure_message"] = errorMessage
 		data["first_failure_message"] = errorMessage
 		data["job_id"] = jobId
+		data["last_target"] = subscription.Reception_channel
 		var re sql.Result
 		re, err = db.Insert(DB_TABLE_BROADCAST_FAILURE_LOG, data)
 		if err != nil {
@@ -84,7 +85,8 @@ func LogFailure(message MessageStuct, subscription SubscriptionRecord, errorMess
 		sqlStr := fmt.Sprintf(`
 		UPDATE %s SET
 		last_failure_message=?
-		WHERE log_id=?`, DB_TABLE_BROADCAST_FAILURE_LOG)
+		last_target=?
+		WHERE log_id=?`, DB_TABLE_BROADCAST_FAILURE_LOG, subscription.Reception_channel)
 		_, err = db.Exec(sqlStr, errorMessage, logId)
 		if err != nil {
 			err = errors.New(fmt.Sprintf("Failed to update log: %v : SQL: %v", err, sqlStr))
