@@ -340,8 +340,9 @@ func sendSubscription(sub data.SubscriptionRecord, sossr *StatusOfSubSenderRouti
 						} else {
 							errMsgInSending = fmt.Sprintf("Code: %v\nContent:\n\t%s", httpStatusCode, returnData)
 						}
-						sub.Reception_channel = sendUrl
-						logId, err = data.LogFailure(msg, sub, errMsgInSending, 0, genUniqueJobId(msg.Time, msg.OriginJobId, sub.Subscription_id))
+						logSub := sub
+						logSub.Reception_channel = sendUrl
+						logId, err = data.LogFailure(msg, logSub, errMsgInSending, 0, genUniqueJobId(msg.Time, msg.OriginJobId, sub.Subscription_id))
 						if err != nil {
 							logger.GetLogger("WARN").Printf("Failed to log failure: %v", err)
 						} else {
@@ -577,8 +578,9 @@ func sendSubscriptionAsRetry(sub data.SubscriptionRecord, sossr *StatusOfSubSend
 						} else {
 							errMsgInSending = fmt.Sprintf("Code: %v\nContent:\n\t%s", httpStatusCode, returnData)
 						}
-						sub.Reception_channel = sendUrl
-						logId, err = data.LogFailure(msg, sub, errMsgInSending, msg.LogId, genUniqueJobId(msg.Time, msg.OriginJobId, sub.Subscription_id))
+						logSub := sub
+						logSub.Reception_channel = sendUrl
+						logId, err = data.LogFailure(msg, logSub, errMsgInSending, msg.LogId, genUniqueJobId(msg.Time, msg.OriginJobId, sub.Subscription_id))
 						if err != nil {
 							logger.GetLogger("WARN").Printf("Failed to log failure: %v", err)
 						}
