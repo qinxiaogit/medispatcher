@@ -84,10 +84,10 @@ func LogFailure(message MessageStuct, subscription SubscriptionRecord, errorMess
 	} else {
 		sqlStr := fmt.Sprintf(`
 		UPDATE %s SET
-		last_failure_message=?
+		last_failure_message=?,
 		last_target=?
-		WHERE log_id=?`, DB_TABLE_BROADCAST_FAILURE_LOG, subscription.Reception_channel)
-		_, err = db.Exec(sqlStr, errorMessage, logId)
+		WHERE log_id=?`, DB_TABLE_BROADCAST_FAILURE_LOG)
+		_, err = db.Exec(sqlStr, errorMessage, subscription.Reception_channel, logId)
 		if err != nil {
 			err = errors.New(fmt.Sprintf("Failed to update log: %v : SQL: %v", err, sqlStr))
 		}
