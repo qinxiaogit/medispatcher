@@ -61,7 +61,9 @@ func UnserializeMessage(dataB []byte) (msg MessageStuct, err error) {
 							value = lItf
 						}
 					}
-					msgField.Set(reflect.ValueOf(value))
+					if value != nil {
+						msgField.Set(reflect.ValueOf(value))
+					}
 				}
 			}
 		}

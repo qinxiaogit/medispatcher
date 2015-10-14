@@ -6,6 +6,7 @@ import (
 	"medispatcher/data"
 	"medispatcher/logger"
 	"time"
+	"runtime/debug"
 )
 
 // StartAndWait starts the redispatch process until Stop is called.
@@ -33,7 +34,7 @@ func redistMainQueue(sigChan *chan int8) {
 	defer func() {
 		err := recover()
 		if err != nil {
-			logger.GetLogger("ERROR").Printf("msgredist routine exited abnormally: %v", err)
+			logger.GetLogger("ERROR").Printf("msgredist routine exited abnormally: %v: %s", err, debug.Stack())
 			*sigChan <- 1
 		}
 	}()
