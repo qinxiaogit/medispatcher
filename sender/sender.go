@@ -15,6 +15,7 @@ import (
 	"time"
 	"strings"
 	"math/rand"
+	"regexp"
 )
 
 // StartAndWait starts the recover process until Stop is called.
@@ -642,6 +643,39 @@ func transferSubscriptionViaHttp(msg *data.MessageStuct, sub *data.SubscriptionR
 	var msgBody []byte
 	uniqJobId := genUniqueJobId((*msg).Time, (*msg).OriginJobId, (*sub).Subscription_id)
 	subUrls := strings.Split(sub.Reception_channel, "\n")
+	// Check for reception env tags
+	receptionEnv := strings.ToUpper(config.GetConfig().RECEPTION_ENV)
+	// tagged urls that match the configured reception env.
+	taggedUrls := []string{}
+	// nonTaggedUrls maybe be used as the default urls, if there're no matched tagged urls.s
+	nonTaggedUrls := []string{}
+	for i, url := range subUrls {
+		subUrls[i] = strings.TrimSpace(url)
+		testUrl := strings.ToUpper(subUrls[i])
+		tag := regexp.MustCompile("^\\[.*?\\]").FindString(testUrl)
+		// has a reception env tag.
+		if tag != "" {
+			subUrls[i] = string([]byte(subUrls[i])[len(tag) - 1:])
+			if receptionEnv != "" {
+				tagPortions := strings.Split(strings.Trim(tag, "[]"), ":")
+				if len(tagPortions) > 1 && tagPortions[0] == "T_ENV" && tagPortions[1] == receptionEnv {
+						taggedUrls = append(taggedUrls, subUrls[i])
+					}
+			}
+		} else {
+			nonTaggedUrls = append(nonTaggedUrls, subUrls[i])
+		}
+	}
+	if len(taggedUrls) > 0 {
+		subUrls = taggedUrls
+	} else if len(nonTaggedUrls) > 0 {
+		subUrls = nonTaggedUrls
+	}
+
+	if len(subUrls) < 1 {
+		err = errors.New(fmt.Sprintf("No qualified urls to use for sending message, please check the subscription info[subscription id: %v, key: %v]", sub.Subscription_id, sub.Class_key))
+		return
+	}
 	rand.Seed(int64(time.Now().Nanosecond()))
 	subUrl, err = url.Parse(strings.TrimSpace(subUrls[rand.Intn(len(subUrls))]))
 	if err != nil {

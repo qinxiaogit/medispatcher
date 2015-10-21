@@ -4,6 +4,10 @@ DAEMON_USER="www-data"
 
 LOG_DIR="/var/log/medispatcher"
 
+# 消息(接收)处理者环境。如果有设置，则根据消息处理地址的T_ENV标签（若发现带标签的地址）进行选择处理地址。
+# 如: "PUB","STAG"
+RECEPTION_ENV="PUB"
+
 # 提供RPC服务的地址. 如：缓存清除、参数动态调节等。
 ListenAddr="0.0.0.0:5601"
 

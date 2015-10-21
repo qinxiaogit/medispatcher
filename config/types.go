@@ -10,6 +10,8 @@ type Config struct {
 	PidFile    string
 	LOG_DIR    string
 	DATA_DIR   string
+	// Environment tag for the message reception(worker) addresses.
+	RECEPTION_ENV string
 
 	QueueServerType      string
 	QueueServerAddr      string

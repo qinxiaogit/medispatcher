@@ -8,6 +8,7 @@ import (
 
 // Parameters of the subscription
 type SubscriptionParams struct {
+	SubscriptionId     int32
 	Concurrency        uint16
 	ConcurrencyOfRetry uint16
 	IntervalOfSending  uint16
@@ -46,6 +47,14 @@ func (sp *SubscriptionParams) Load(subscriptionId int32) (err error) {
 		}
 		for n, d := range params {
 			switch n {
+			case "SubscriptionId":
+				if vf, ok := d.(float64); !ok {
+					err = errors.New(fmt.Sprintf("Failed to load params: %s type assertion failed", n))
+					return
+				} else {
+					d = int32(vf)
+				}
+				fallthrough
 			case "ConcurrencyOfRetry", "Concurrency", "IntervalOfSending", "ProcessTimeout":
 				if vf, ok := d.(float64); !ok {
 					err = errors.New(fmt.Sprintf("Failed to load params: %s type assertion failed", n))
