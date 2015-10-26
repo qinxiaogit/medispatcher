@@ -655,7 +655,7 @@ func transferSubscriptionViaHttp(msg *data.MessageStuct, sub *data.SubscriptionR
 		tag := regexp.MustCompile("^\\[.*?\\]").FindString(testUrl)
 		// has a reception env tag.
 		if tag != "" {
-			subUrls[i] = string([]byte(subUrls[i])[len(tag) - 1:])
+			subUrls[i] = string([]byte(subUrls[i])[len(tag):])
 			if receptionEnv != "" {
 				tagPortions := strings.Split(strings.Trim(tag, "[]"), ":")
 				if len(tagPortions) > 1 && tagPortions[0] == "T_ENV" && tagPortions[1] == receptionEnv {
@@ -671,7 +671,6 @@ func transferSubscriptionViaHttp(msg *data.MessageStuct, sub *data.SubscriptionR
 	} else if len(nonTaggedUrls) > 0 {
 		subUrls = nonTaggedUrls
 	}
-
 	if len(subUrls) < 1 {
 		err = errors.New(fmt.Sprintf("No qualified urls to use for sending message, please check the subscription info[subscription id: %v, key: %v]", sub.Subscription_id, sub.Class_key))
 		return
