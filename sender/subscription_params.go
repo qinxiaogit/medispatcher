@@ -37,6 +37,13 @@ func (sp *SubscriptionParams) getFileName(subscriptionId int32) string {
 
 // Load subscription params from local data.
 func (sp *SubscriptionParams) Load(subscriptionId int32) (err error) {
+	defer func(){
+		nErr := recover()
+		if nErr != nil {
+			err = errors.New(fmt.Sprintf("Failed to load params: %v", nErr))
+		}
+	}()
+	sp.SubscriptionId = subscriptionId
 	var data interface{}
 	data, err = config.GetConfigFromDisk(sp.getFileName(subscriptionId))
 	if err == nil {
@@ -54,7 +61,6 @@ func (sp *SubscriptionParams) Load(subscriptionId int32) (err error) {
 				} else {
 					d = int32(vf)
 				}
-				fallthrough
 			case "ConcurrencyOfRetry", "Concurrency", "IntervalOfSending", "ProcessTimeout":
 				if vf, ok := d.(float64); !ok {
 					err = errors.New(fmt.Sprintf("Failed to load params: %s type assertion failed", n))
@@ -62,10 +68,8 @@ func (sp *SubscriptionParams) Load(subscriptionId int32) (err error) {
 				} else {
 					d = uint16(vf)
 				}
-				fallthrough
-			default:
-				reflect.ValueOf(sp).Elem().FieldByName(n).Set(reflect.ValueOf(d))
 			}
+			reflect.ValueOf(sp).Elem().FieldByName(n).Set(reflect.ValueOf(d))
 		}
 	}
 	return

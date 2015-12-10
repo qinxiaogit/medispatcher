@@ -226,7 +226,11 @@ func (em *errorMonitor) checkQueueBlocks() {
 			for _, sub := range subscriptions {
 				var blockedMessageCount, blockedReQueueMessageCount int
 				subParams := NewSubscriptionParams()
-				subParams.Load(sub.Subscription_id)
+				err = subParams.Load(sub.Subscription_id)
+				if err != nil {
+					logger.GetLogger("WARN").Printf("Failed to load subscription[%v] params: %v", sub.Subscription_id, err)
+					continue
+				}
 				if !subParams.AlerterEnabled || (subParams.AlerterEmails == "" && subParams.AlerterPhoneNumbers == "") {
 					continue
 				}
