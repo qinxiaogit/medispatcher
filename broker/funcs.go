@@ -53,8 +53,10 @@ func NormalizeJobStats(stats *map[string]interface{}) {
 // GetBroker get a new broker. It will block until a broker is successfully created or Stop is called.
 // retryInterval is in seconds.
 // exitCheck returns true will break the block.
-func GetBrokerWitBlock(retryInteral int, exitCheck func() bool) (br *Broker) {
+// returns error when exiting
+func GetBrokerWitBlock(retryInteral int, exitCheck func() bool) (br Broker, err error) {
 	if exitCheck() {
+		err = errors.New("Exiting!")
 		return
 	}
 	brokerConfig := Config{
@@ -68,18 +70,19 @@ func GetBrokerWitBlock(retryInteral int, exitCheck func() bool) (br *Broker) {
 			releaseBorkerConnAvailTestLock()
 		}()
 	}
+
 	for !exitCheck() {
 		if !hasConnTestLock {
 			blockMoreBrokerConnFailures()
 			// block broken and check the exit signal again.
 			time.Sleep(time.Millisecond * 100)
 			if exitCheck() {
+				err = errors.New("Exiting!")
 				return
 			}
 		}
-		brI, err := New(brokerConfig)
+		br, err = New(brokerConfig)
 		if err == nil {
-			br = &brI
 			break
 		} else {
 			if hasConnTestLock {

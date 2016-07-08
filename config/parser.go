@@ -39,14 +39,18 @@ func TraverseTomlTree(t *toml.TomlTree) map[string]interface{} {
 func ParseConfig() (*Config, error) {
 	var configFile string
 	var err error
-	if runtime.GOOS == "windows" {
-		clientPath, err := filepath.Abs(os.Args[0])
-		if err != nil {
-			return nil, errors.New(fmt.Sprintf("Failed to get client ABS path: %v", err))
-		}
-		configFile = path.Dir(clientPath) + string(os.PathSeparator) + "config.toml"
+	if len(os.Args) > 1{
+		configFile = os.Args[1]
 	} else {
-		configFile = "/etc/medispatcher.toml"
+		if runtime.GOOS == "windows" {
+			clientPath, err := filepath.Abs(os.Args[0])
+			if err != nil {
+				return nil, errors.New(fmt.Sprintf("Failed to get client ABS path: %v", err))
+			}
+			configFile = path.Dir(clientPath) + string(os.PathSeparator) + "config.toml"
+		} else {
+			configFile = "/etc/medispatcher.toml"
+		}
 	}
 
 	configTree, err := toml.LoadFile(configFile)

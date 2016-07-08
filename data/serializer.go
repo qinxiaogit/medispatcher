@@ -5,6 +5,7 @@ import (
 	"gopkg.in/vmihailenco/msgpack.v2"
 	"medispatcher/strutil"
 	"reflect"
+	"strconv"
 )
 
 func UnserializeMessage(dataB []byte) (msg MessageStuct, err error) {
@@ -18,6 +19,16 @@ func UnserializeMessage(dataB []byte) (msg MessageStuct, err error) {
 		rf := reflect.ValueOf(&msg).Elem()
 		for field, value := range dataD {
 			field = strutil.UpperFirst(field)
+			// Hot fixing for type
+			switch field {
+				case "OriginJobId","LogId", "RetryTimes":
+					value, err = strconv.ParseInt(fmt.Sprintf("%v", value), 10, 64)
+				case "Time":
+					value, err = strconv.ParseFloat(fmt.Sprintf("%v", value), 64)
+			}
+			if err != nil {
+				return
+			}
 			msgField := rf.FieldByName(field)
 			if msgField.IsValid() {
 				switch msgField.Kind() {
@@ -50,7 +61,9 @@ func UnserializeMessage(dataB []byte) (msg MessageStuct, err error) {
 							value = lItf
 						}
 					}
-					msgField.Set(reflect.ValueOf(value))
+					if value != nil {
+						msgField.Set(reflect.ValueOf(value))
+					}
 				}
 			}
 		}

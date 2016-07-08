@@ -14,6 +14,7 @@ const (
 	Error_InvalidBroker = "Invalid broker."
 
 	ERROR_CONN_CLOSED         = "EOF"
+	ERROR_CONN_BROKEN         = "broken pipe"
 	ERROR_JOB_RESERVE_TIMEOUT = "TIMED_OUT"
 	ERROR_JOB_NOT_FOUND       = "NOT_FOUND"
 )

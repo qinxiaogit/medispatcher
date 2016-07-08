@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"time"
 	"sync"
+	"medispatcher/config"
 )
 
 type ConnAction int8
@@ -83,7 +84,7 @@ func gcStats() {
 
 // 启动控制台服务。可通过控制台进行各项调试。Telent 127.0.0.1 5606
 func startConsole() {
-	server, err := net.Listen("tcp", "0.0.0.0:5606")
+	server, err := net.Listen("tcp", config.GetConfig().StatisticApiAddr)
 	if err != nil {
 		logger.GetLogger("ERROR").Printf("Failed to start console server: %s", err)
 		return

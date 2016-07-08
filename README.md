@@ -42,6 +42,9 @@ First release of v2.
     * alert when a message processing failing times reached the threshold.
     * alert when the subscription channel queued message count reached the threshold.
 * Fixed the optimization for rpc service exiting: the readings from client will no longer block exiting.    
+* Customizable config file    
+ e.g. medispatcher /path/to/config/file
+* Multiple message processing worker url support. The urls can be multi-lined, each line represents a separate worker url. This achieves a soft load balance.
  
 ## Milestone
 
@@ -54,6 +57,9 @@ First release of v2.
 ### 2.2.0
 ####Features    
 * Alerts when message processing failures reaches certain thresholds.    
+* Customizable config file    
+ e.g. medispatcher /path/to/config/file
+* Multiple message processing worker url support. The urls can be multi-lined, each line represents a separate worker url. This achieves a soft load balance. 
 
 ### 2.3.0
 ####Features

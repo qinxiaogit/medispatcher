@@ -26,6 +26,7 @@ var debug bool
 var config = &Config{
 	QueueServerType:                      "beanstalk",
 	ListenAddr:                           "0.0.0.0:5601",
+	StatisticApiAddr:                     "0.0.0.0:5606",
 	NameOfMainQueue:                      "main-incoming-queue",
 	PrefixOfChannelQueue:                 "sub-queue/",
 	QueueServerAddr:                      "127.0.0.1:11300",

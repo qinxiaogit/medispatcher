@@ -270,7 +270,7 @@ func (alt *Alerter) sendAlert(alm Alert) error {
 	}
 	if err != nil {
 		if alt.logger != nil {
-			alt.logger.Printf("Failed to send Alert: %v", err)
+			alt.logger.Printf("Failed to send Alert to [%v]: %v", alm.Recipient, err)
 		}
 		alt.errorChan <- err
 	}

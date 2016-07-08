@@ -13,10 +13,9 @@ import (
 // StartAndWait starts the recover process until Stop is called.
 func StartAndWait() {
 	var (
-		redisConnected bool
+		redisConnected, brConnected    bool
 		redis          *data.RedisConn
 		err            error
-		brPt           *broker.Broker
 		br             broker.Broker
 		msg            data.MessageStuct
 	)
@@ -90,10 +89,10 @@ func StartAndWait() {
 				continue
 			}
 
-			if brPt == nil {
-				brPt = broker.GetBrokerWitBlock(INTERVAL_OF_RETRY_ON_CONN_FAIL, shouldExit)
+			if !brConnected {
+				br, err = broker.GetBrokerWitBlock(INTERVAL_OF_RETRY_ON_CONN_FAIL, shouldExit)
 				// maybe, in exiting stage
-				if brPt == nil {
+				if err != nil {
 					// not able to put it to the queue server, then push it back to the recover list again.
 					putBackSuccess := true
 					_, err = redis.Do("RPUSH", dataRawL[0], dataB)
@@ -118,8 +117,6 @@ func StartAndWait() {
 						logger.GetLogger("DATA").Printf("RECOVFAILBACK %v", dataB)
 					}
 					continue
-				} else {
-					br = *brPt
 				}
 				br.Use(config.GetConfig().NameOfMainQueue)
 			}
@@ -131,8 +128,9 @@ func StartAndWait() {
 			}
 			_, err = br.Pub(msg.Priority, msg.Delay, broker.DEFAULT_MSG_TTR, dataB)
 			if err != nil {
-				if err.Error() == broker.ERROR_CONN_CLOSED {
-					brPt = nil
+				if err.Error() == broker.ERROR_CONN_CLOSED || err.Error() == broker.ERROR_CONN_BROKEN{
+					br.Close()
+					brConnected = false
 				}
 				// tailed to put to the queue server, then push it back to recover list again.
 				_, err = redis.Do("RPUSH", dataRawL[0], dataB)
