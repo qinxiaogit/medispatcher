@@ -1,6 +1,6 @@
 # medispatcher config file. It should be placed to /etc/medispacher.toml
 # TOML v0.2 FORMAT
-DAEMON_USER="www-data"
+DAEMON_USER="chaos"
 
 LOG_DIR="/var/log/medispatcher"
 
@@ -11,8 +11,14 @@ RECEPTION_ENV="PUB"
 # 提供RPC服务的地址. 如：缓存清除、参数动态调节等。
 ListenAddr="0.0.0.0:5601"
 
-# 队列服务器地址, 如beanstalkd的为 127.0.0.1:11300
-QueueServerAddr="127.0.0.1:11300"
+# 队列服务器地址, 如beanstalkd的为 127.0.0.1:11300,127.0.0.1:11301
+QueueServerAddr="127.0.0.1:11300,127.0.0.1:11301"
+
+# 每个队列上连接池的消息监听连接数。
+QueueServerPoolListenConnCount=1
+# 每个队列上连接池的命令连接数。(用于发送除了监听之外的命令)
+QueueServerPoolCmdConnCount=1
+
 
 NameOfMainQueue="event_center_messages"
 
@@ -23,13 +29,13 @@ EnableMsgSentLog=true
 
 
 # 主队列上消息分发并发数
-ListenersOfMainQueue=10
+ListenersOfMainQueue=20
 
 # 每个订阅允许的最大并发推送数
-MaxSendersPerChannel=10
+MaxSendersPerChannel=2
 
 # 每个订阅(重试时)允许的最大并发推送数
-MaxSendersPerRetryChannel=5
+MaxSendersPerRetryChannel=1
 
 # 每个订阅默认的并发推送数
 SendersPerChannel=5

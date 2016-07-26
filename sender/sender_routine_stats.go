@@ -51,10 +51,15 @@ func (srs *SenderRoutineStats) statusExists(subscriptionId int32) bool {
 }
 
 func (srs *SenderRoutineStats) getStatus(subscriptionId int32) *StatusOfSubSenderRoutine {
-	return (*srs).routineStatus[subscriptionId]
+	srs.lock()
+	s := (*srs).routineStatus[subscriptionId]
+	srs.unlock()
+	return s
 }
 
 func (srs *SenderRoutineStats) getHandlingSubscriptionIds() []int32 {
+	srs.lock()
+	defer srs.unlock()
 	ids := []int32{}
 	for id, _ := range (*srs).routineStatus {
 		ids = append(ids, id)

@@ -11,6 +11,7 @@ import (
 	"medispatcher/logger"
 	"sync"
 	"time"
+	"medispatcher/broker/beanstalk"
 )
 
 type errorSubscriptionCheck struct {
@@ -209,16 +210,20 @@ func (em *errorMonitor) addMessageCheck(sub *data.SubscriptionRecord, subParam S
 // Check queued message blocks every 5 seconds.
 func (em *errorMonitor) checkQueueBlocks() {
 	var (
-		br                       broker.Broker
-		brConnected              bool
-		stats, reQueueStats      map[string]interface{}
+		brPool                   *beanstalk.SafeBrokerkPool
+		stats, reQueueStats      map[string]map[string]interface{}
 		errOfQueue, errOfReQueue error
 	)
 	if em.alerterEmail == nil && em.alerterSms == nil {
 		return
 	}
+	brPool  = broker.GetBrokerPoolWithBlock(1, 3, shouldExit)
+	if brPool == nil {
+		return
+	}
 	alertStatistics := map[int32]int64{}
 	for {
+		time.Sleep(time.Second * 5)
 		subscriptions, err := data.GetAllSubscriptionsWithCache()
 		if err != nil {
 			logger.GetLogger("WARN").Printf("Failed to get subscriptions: %v", err)
@@ -242,62 +247,54 @@ func (em *errorMonitor) checkQueueBlocks() {
 				}
 				queueName := config.GetChannelName(sub.Class_key, sub.Subscription_id)
 				reQueueName := config.GetChannelNameForReSend(sub.Class_key, sub.Subscription_id)
-				if !brConnected {
-					br, err = broker.GetBrokerWitBlock(INTERVAL_OF_RETRY_ON_CONN_FAIL, shouldExit)
-					if err != nil {
-						break
-					} else {
-						brConnected = true
-					}
+
+				stats, errOfQueue = brPool.StatsTopic(queueName)
+				if errOfQueue != nil {
+					logger.GetLogger("WARN").Printf("%v ERR: %v", queueName, errOfQueue)
+					continue
 				}
-				stats, errOfQueue = br.StatsTopic(queueName)
-				reQueueStats, errOfReQueue = br.StatsTopic(reQueueName)
-				if errOfQueue != nil && (errOfQueue.Error() == broker.ERROR_CONN_CLOSED || errOfQueue.Error() == broker.ERROR_CONN_BROKEN){
-					brConnected = false
+				reQueueStats, errOfReQueue = brPool.StatsTopic(reQueueName)
+				if errOfReQueue != nil {
+					logger.GetLogger("WARN").Printf("%v ERR: %v", reQueueName, reQueueStats)
+					continue
 				}
-				if errOfReQueue != nil && (errOfReQueue.Error() == broker.ERROR_CONN_CLOSED || errOfReQueue.Error() == broker.ERROR_CONN_BROKEN) {
-					br.Close()
-					brConnected = false
+				for _, s := range stats {
+					n, _ := s["current-jobs-ready"].(int)
+					blockedMessageCount += n
 				}
-				if errOfQueue == nil || errOfReQueue == nil {
-					// TODO: assertion failed. if assertion success with ZERO value, the assertion result still holds false (bug of golang?).
-					if errOfQueue == nil {
-						blockedMessageCount, _ = stats["current-jobs-ready"].(int)
+
+				for _, s := range reQueueStats {
+					n, _ := s["current-jobs-ready"].(int)
+					blockedReQueueMessageCount += n
+				}
+
+				if blockedMessageCount == 0 && blockedReQueueMessageCount == 0 {
+					continue
+				}
+
+				if blockedMessageCount >= MESSAGE_BLOCKED_ALERT_THRESHOLD || blockedReQueueMessageCount >= MESSAGE_BLOCKED_ALERT_THRESHOLD {
+					alert := Alerter.Alert{
+						Subject: "消息中心警报",
+						Content: fmt.Sprintf("队列 %v 消息等待数已达%v, 重试队列 %v 消息等待数已达%v, 请到后台订阅管理中调节消息处理速率参数或者优化woker的处理速度。\n订阅ID: %v\n消息处理地址: %v\n当前推送并发数: %v\n推送最小间隔时间: %vms",
+							queueName, blockedMessageCount, reQueueName, blockedReQueueMessageCount,
+							sub.Subscription_id, sub.Reception_channel, subParams.Concurrency,
+							subParams.IntervalOfSending,
+						),
+					}
+					if subParams.AlerterEmails != "" {
+						alert.Recipient = subParams.AlerterEmails
+						alert.TemplateName = "MessageSendingFailed.eml"
+						em.alerterEmail.Alert(alert)
 					}
 
-					if errOfQueue == nil {
-						blockedReQueueMessageCount, _ = reQueueStats["current-jobs-ready"].(int)
+					if subParams.AlerterPhoneNumbers != "" {
+						alert.Recipient = subParams.AlerterPhoneNumbers
+						alert.TemplateName = "MessageSendingFailed.sms"
+						em.alerterSms.Alert(alert)
 					}
-
-					if blockedMessageCount == 0 && blockedReQueueMessageCount == 0 {
-						continue
-					}
-
-					if blockedMessageCount >= MESSAGE_BLOCKED_ALERT_THRESHOLD || blockedReQueueMessageCount >= MESSAGE_BLOCKED_ALERT_THRESHOLD {
-						alert := Alerter.Alert{
-							Subject: "消息中心警报",
-							Content: fmt.Sprintf("队列 %v 消息等待数已达%v, 重试队列 %v 消息等待数已达%v, 请到后台订阅管理中调节消息处理速率参数或者优化woker的处理速度。\n订阅ID: %v\n消息处理地址: %v\n当前推送并发数: %v\n推送最小间隔时间: %vms",
-								queueName, blockedMessageCount, reQueueName, blockedReQueueMessageCount,
-								sub.Subscription_id, sub.Reception_channel, subParams.Concurrency,
-								subParams.IntervalOfSending,
-							),
-						}
-						if subParams.AlerterEmails != "" {
-							alert.Recipient = subParams.AlerterEmails
-							alert.TemplateName = "MessageSendingFailed.eml"
-							em.alerterEmail.Alert(alert)
-						}
-
-						if subParams.AlerterPhoneNumbers != "" {
-							alert.Recipient = subParams.AlerterPhoneNumbers
-							alert.TemplateName = "MessageSendingFailed.sms"
-							em.alerterSms.Alert(alert)
-						}
-						alertStatistics[sub.Subscription_id] = currentTime
-					}
+					alertStatistics[sub.Subscription_id] = currentTime
 				}
 			}
 		}
-		time.Sleep(time.Second * 5)
 	}
 }

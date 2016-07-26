@@ -6,6 +6,8 @@ import (
 	"medispatcher/rpc"
 	"medispatcher/sender"
 	"reflect"
+	"medispatcher/logger"
+	"runtime/debug"
 )
 
 type SetSubscriptionParams struct {
@@ -41,6 +43,7 @@ func (i SetSubscriptionParams) Process(args map[string]interface{}) (re interfac
 		pErr := recover()
 		if pErr != nil {
 			err = errors.New(fmt.Sprintf("%v", pErr))
+			logger.GetLogger("ERROR").Printf("RPC SetSubscriptionParams error: %v, %s", pErr, debug.Stack())
 		}
 	}()
 	var subscriptionId int32
@@ -75,11 +78,12 @@ func (i SetSubscriptionParams) Process(args map[string]interface{}) (re interfac
 			switch n {
 			case "ConcurrencyOfRetry", "Concurrency", "IntervalOfSending", "ProcessTimeout":
 				if vf, ok := v.(float64); !ok {
-					err = errors.New(fmt.Sprintf("Param type error: %s: %v", n, v))
+					err = errors.New(fmt.Sprintf("Param type error expecting: float/int: %s: %v", n, v))
 					return
-				} else {
-					v = uint16(vf)
+				} else{
+					v = uint32(vf)
 				}
+
 			}
 			rElemField.Set(reflect.ValueOf(v))
 		}

@@ -32,7 +32,7 @@ type FailureLogRecord struct {
 
 // Add or update a failure log. Invoke this function when the last sending is failed.
 // jobId is unique jobid in format: {timestamp}-{MQ jobid}-{subscription_id}
-func LogFailure(message MessageStuct, subscription SubscriptionRecord, errorMessage string, logId uint64, jobId string) (newLogId uint64, err error) {
+func LogFailure(message *MessageStuct, subscription SubscriptionRecord, errorMessage string, logId uint64, jobId string) (newLogId uint64, err error) {
 	if logId > 0 {
 		_, err = FailureLogExists(logId)
 		if err != nil {

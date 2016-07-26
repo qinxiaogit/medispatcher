@@ -10,27 +10,19 @@ import (
 
 // Stop stops the senders.
 func Stop(returnCh *chan string) {
-	// wait for the exit signal to be checked. taken by shouldExit
-	exitChan <- int8(1)
-	// wait for the process exit. token by StartAndWait
-	exitChan <- int8(1)
+	close(exitChan)
+	procExitWG.Wait()
 	*returnCh <- "msgsender"
 }
 
+// "true" indicates that the service/process is in exiting stage.
 func shouldExit() bool {
-	exitingCheckLock <- 1
-	r := exiting
-	if !r {
-		select {
-		case <-exitChan:
-			exiting = true
-			break
-		default:
-		}
-		r = exiting
+	select{
+	case  <-exitChan:
+		return true
+	default:
+		return false
 	}
-	<-exitingCheckLock
-	return r
 }
 
 func getRetryDelay(retryTimes uint16, coeOfIntervalForRetrySendingMsg uint16) float64 {
@@ -92,16 +84,14 @@ func SetSubscriptionParams(subscriptionId int32, param SubscriptionParams) error
 		return err
 	}
 
-	routineStatus.lock()
 	var (
-		coCount        = routineStatus.coCount
-		coCountOfRetry = routineStatus.coCountOfRetry
+		coCount        = routineStatus.GetCoCount()
+		coCountOfRetry = routineStatus.GetCoCountOfRetry()
 	)
-	routineStatus.unlock()
 
 	var sig SubSenderRoutineChanSig
 	if param.Concurrency != coCount {
-		var diff uint16
+		var diff uint32
 		if param.Concurrency > coCount {
 			sig = SENDER_ROUTINE_SIG_INCREASE_ROUTINE
 			diff = param.Concurrency - coCount
@@ -119,7 +109,7 @@ func SetSubscriptionParams(subscriptionId int32, param SubscriptionParams) error
 	}
 
 	if param.ConcurrencyOfRetry != coCountOfRetry {
-		var diff uint16
+		var diff uint32
 		if param.ConcurrencyOfRetry > coCountOfRetry {
 			sig = SENDER_ROUTINE_SIG_INCREASE_ROUTINE_FOR_RETRY
 			diff = param.ConcurrencyOfRetry - coCountOfRetry

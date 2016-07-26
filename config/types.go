@@ -15,6 +15,8 @@ type Config struct {
 
 	QueueServerType      string
 	QueueServerAddr      string
+	QueueServerPoolCmdConnCount uint32
+	QueueServerPoolListenConnCount uint32
 	NameOfMainQueue      string
 	PrefixOfChannelQueue string
 
@@ -41,21 +43,21 @@ type Config struct {
 
 	ListenersOfMainQueue uint16
 
-	MaxSendersPerChannel uint16
+	MaxSendersPerChannel uint32
 
-	SendersPerChannel uint16
+	SendersPerChannel uint32
 	// In milliseconds
-	IntervalOfSendingForSendRoutine uint16
+	IntervalOfSendingForSendRoutine uint32
 
-	MaxSendersPerRetryChannel uint16
+	MaxSendersPerRetryChannel uint32
 
-	SendersPerRetryChannel uint16
-
-	// In milliseconds
-	MaxMessageProcessTime uint16
+	SendersPerRetryChannel uint32
 
 	// In milliseconds
-	DefaultMaxMessageProcessTime uint16
+	MaxMessageProcessTime uint32
+
+	// In milliseconds
+	DefaultMaxMessageProcessTime uint32
 
 	// interval = pow(retryTimes+1, 2)*CoeOfIntervalForRetrySendingMsg
 	CoeOfIntervalForRetrySendingMsg uint16

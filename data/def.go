@@ -26,6 +26,7 @@ const (
 	DB_TABLE_MESSAGE_CLASSES       = "message_classes"
 	DB_TABLE_BROADCAST_FAILURE_LOG = "broadcast_failure_log"
 	DB_TABLE_SUBSCRIBERS           = "subscribers"
+	DB_TABLE_SUBSCRIPTION_PARAMS   = "subscription_params"
 )
 
 const (

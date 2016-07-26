@@ -15,11 +15,14 @@ import (
 	"runtime/debug"
 	"syscall"
 	"time"
+	_ "net/http/pprof"
+	"net/http"
 )
 
 var exitSigChan = make(chan int8)
 
 func main() {
+	go http.ListenAndServe(":9898", nil)
 	err := config.Setup()
 	if err != nil {
 		fmt.Printf("Failed to setup configs: %v", err)
@@ -28,7 +31,7 @@ func main() {
 
 	maxProcs := runtime.NumCPU()
 	if maxProcs > 1 {
-		maxProcs -= 1
+		maxProcs--
 	}
 	runtime.GOMAXPROCS(maxProcs)
 
@@ -42,7 +45,7 @@ func main() {
 	<-exitSigChan
 }
 
-// 系统信号处理
+// ProcessSysSignal 系统信号处理
 func ProcessSysSignal() {
 	var exitSigSent bool
 	var exitSigSentLock = make(chan bool, 1)
@@ -78,7 +81,7 @@ func ProcessSysSignal() {
 				for sigReceivedCount < 4 {
 					select {
 					case workerName := <-workerExitSigChan:
-						sigReceivedCount += 1
+						sigReceivedCount++
 						logger.GetLogger("INFO").Printf("%v worker exited.", workerName)
 					default:
 						time.Sleep(time.Millisecond * 40)
@@ -95,15 +98,16 @@ func ProcessSysSignal() {
 				debug.FreeOSMemory()
 			case sigusr1:
 				fmt.Printf("Current goroutines: %d\n", runtime.NumGoroutine())
-			// case syscall.SIGUSR2:
-			// 	fmt.Printf("Configs: %s\n", config.GetConfig())
+			 case syscall.SIGUSR2:
+				 fmt.Printf("Current goroutines: %d\n", runtime.NumGoroutine())
+			 	//fmt.Printf("Configs: %s\n", config.GetConfig())
 			case syscall.SIGHUP:
 				curDebugMode := !config.DebugEnabled()
 				logger.GetLogger("INFO").Printf("Received force toggle DEBUG mode signal, setting DEBUG mode to : %v", curDebugMode)
 				config.SetDebug(curDebugMode)
 			default:
 				if config.DebugEnabled() {
-					logger.GetLogger("INFO").Printf("un-expected signal: %s(%d)\n", *sig, *sig)
+					logger.GetLogger("INFO").Printf("un-expected signal: %s(%v)\n", *sig, *sig)
 				}
 			}
 		}(&osSingal)

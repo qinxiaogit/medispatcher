@@ -8,15 +8,15 @@ import (
 	"strconv"
 )
 
-func UnserializeMessage(dataB []byte) (msg MessageStuct, err error) {
+func UnserializeMessage(dataB []byte) (msg *MessageStuct, err error) {
 	var dataD map[string]interface{}
 	switch MSG_SERIALIZER {
 	case "msgpack":
 		err = msgpack.Unmarshal(dataB, &dataD)
 	}
-
+	msg = new(MessageStuct)
 	if err == nil {
-		rf := reflect.ValueOf(&msg).Elem()
+		rf := reflect.ValueOf(msg).Elem()
 		for field, value := range dataD {
 			field = strutil.UpperFirst(field)
 			// Hot fixing for type
@@ -26,9 +26,7 @@ func UnserializeMessage(dataB []byte) (msg MessageStuct, err error) {
 				case "Time":
 					value, err = strconv.ParseFloat(fmt.Sprintf("%v", value), 64)
 			}
-			if err != nil {
-				return
-			}
+
 			msgField := rf.FieldByName(field)
 			if msgField.IsValid() {
 				switch msgField.Kind() {

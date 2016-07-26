@@ -14,7 +14,7 @@ type SubscriptionRecord struct {
 	Reception_channel string
 	Status            int8
 	Subscribe_time    uint
-	Timeout           uint16
+	Timeout           uint32
 }
 
 func getSubscriptionsCacheKey(topicName string) string {

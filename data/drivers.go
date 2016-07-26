@@ -245,7 +245,10 @@ func GetDb() (*DB, error) {
 		return db, nil
 	}
 
-	if len(dbPoolUsing) > MAX_DB_CONNECTIONS {
+	getDbPoolLock()
+	inUsing := len(dbPoolUsing)
+	releaseDbPoolLock()
+	if inUsing > MAX_DB_CONNECTIONS {
 		retryTimes := 0
 		for {
 			time.Sleep(time.Millisecond * 10)

@@ -8,24 +8,30 @@ import (
 	"reflect"
 	"strings"
 	"time"
+	"medispatcher/broker/beanstalk"
 )
 
 // StartAndWait starts the recover process until Stop is called.
 func StartAndWait() {
+	exitWg.Add(1)
 	var (
-		redisConnected, brConnected    bool
 		redis          *data.RedisConn
+		redisConnected bool
 		err            error
-		br             broker.Broker
-		msg            data.MessageStuct
+		brPool         *beanstalk.SafeBrokerkPool
+		msg            *data.MessageStuct
 	)
 	defer func(){
 		err:= recover()
 		if err != nil {
 			logger.GetLogger("ERROR").Printf("recoverwatcher exiting abnormally: %v", err)
-			exitChan <- 1
 		}
+		exitWg.Done()
 	}()
+	brPool = broker.GetBrokerPoolWithBlock(2, INTERVAL_OF_RETRY_ON_CONN_FAIL, shouldExit)
+	if brPool == nil {
+		return
+	}
 	for !shouldExit() {
 		err = nil
 		if !redisConnected {
@@ -89,49 +95,13 @@ func StartAndWait() {
 				continue
 			}
 
-			if !brConnected {
-				br, err = broker.GetBrokerWitBlock(INTERVAL_OF_RETRY_ON_CONN_FAIL, shouldExit)
-				// maybe, in exiting stage
-				if err != nil {
-					// not able to put it to the queue server, then push it back to the recover list again.
-					putBackSuccess := true
-					_, err = redis.Do("RPUSH", dataRawL[0], dataB)
-					if err != nil {
-						// try again when redis connection problem.
-						if strings.Index(err.Error(), "closed") != -1  || strings.Index(err.Error(), "EOF") != -1{
-							redisConnected = false
-							redis, err = data.GetRedis()
-							if err == nil {
-								_, err = redis.Do("RPUSH", dataRawL[0], dataB)
-							}
-							if err != nil {
-								putBackSuccess = false
-							}
-						} else {
-							putBackSuccess = false
-						}
-					}
-					if !putBackSuccess{
-						logger.GetLogger("WARN").Printf("Not able to push message back to recover list: %v", err)
-						// message removed from queue, log it for later recovery in other means.
-						logger.GetLogger("DATA").Printf("RECOVFAILBACK %v", dataB)
-					}
-					continue
-				}
-				br.Use(config.GetConfig().NameOfMainQueue)
-			}
 			msg, err = data.UnserializeMessage(dataB)
-			// TODO: msg loss risk
 			if err != nil {
 				logger.GetLogger("WARN").Printf("Failed to decode msg from recover list: %v", err)
 				continue
 			}
-			_, err = br.Pub(msg.Priority, msg.Delay, broker.DEFAULT_MSG_TTR, dataB)
+			_, err = brPool.Pub(config.GetConfig().NameOfMainQueue, dataB, msg.Priority, msg.Delay, broker.DEFAULT_MSG_TTR)
 			if err != nil {
-				if err.Error() == broker.ERROR_CONN_CLOSED || err.Error() == broker.ERROR_CONN_BROKEN{
-					br.Close()
-					brConnected = false
-				}
 				// tailed to put to the queue server, then push it back to recover list again.
 				_, err = redis.Do("RPUSH", dataRawL[0], dataB)
 				if err != nil {
@@ -141,5 +111,4 @@ func StartAndWait() {
 			}
 		}
 	}
-	<-exitChan
 }

@@ -4,29 +4,22 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"medispatcher/data"
+	"medispatcher/logger"
 )
 
 // Parameters of the subscription
 type SubscriptionParams struct {
-	SubscriptionId     int32
-	Concurrency        uint16
-	ConcurrencyOfRetry uint16
-	IntervalOfSending  uint16
-	// Process timeout in milliseconds
-	// ProcessTimeout is significant. Many checks relies on it, 0 means it has not a customized params, all params are in default value.
-	ProcessTimeout      uint16
-	ReceptionUri        string
-	AlerterEmails       string
-	AlerterPhoneNumbers string
-	AlerterEnabled      bool
+	data.SubscriptionParams
 }
 
 func NewSubscriptionParams() *SubscriptionParams {
 	return &SubscriptionParams{
-		AlerterEnabled:     true,
-		Concurrency:        config.GetConfig().SendersPerChannel,
-		ConcurrencyOfRetry: config.GetConfig().SendersPerRetryChannel,
-		IntervalOfSending:  config.GetConfig().IntervalOfSendingForSendRoutine,
+		SubscriptionParams: data.SubscriptionParams{AlerterEnabled:     true,
+			Concurrency:        config.GetConfig().SendersPerChannel,
+			ConcurrencyOfRetry: config.GetConfig().SendersPerRetryChannel,
+			IntervalOfSending:  config.GetConfig().IntervalOfSendingForSendRoutine,
+		},
 	}
 }
 
@@ -35,7 +28,20 @@ func (sp *SubscriptionParams) getFileName(subscriptionId int32) string {
 	return fmt.Sprintf("subscription_params_%v", subscriptionId)
 }
 
-// Load subscription params from local data.
+// RefreshAndLoad refresh local caches and load the latest values of the subscription parameters.
+func (sp *SubscriptionParams) RefreshAndLoad(subscriptionId int32) error{
+	err := sp.LoadFromDb(subscriptionId)
+	if err != nil {
+		return err
+	}
+	err = sp.Store(subscriptionId)
+	if err != nil {
+		logger.GetLogger("WARN").Printf("Failed to store subscription parameters to local storage: %v", err)
+	}
+	return nil
+}
+
+// Load subscription params from local data or database.
 func (sp *SubscriptionParams) Load(subscriptionId int32) (err error) {
 	defer func(){
 		nErr := recover()
@@ -46,7 +52,13 @@ func (sp *SubscriptionParams) Load(subscriptionId int32) (err error) {
 	sp.SubscriptionId = subscriptionId
 	var data interface{}
 	data, err = config.GetConfigFromDisk(sp.getFileName(subscriptionId))
-	if err == nil {
+	if err != nil {
+		err = sp.LoadFromDb(subscriptionId)
+		if err == nil {
+			sp.Store(subscriptionId)
+		}
+		return
+	}else {
 		params, ok := data.(map[string]interface{})
 		if !ok {
 			err = errors.New("Failed to load params: type assertion failed.")
@@ -56,17 +68,17 @@ func (sp *SubscriptionParams) Load(subscriptionId int32) (err error) {
 			switch n {
 			case "SubscriptionId":
 				if vf, ok := d.(float64); !ok {
-					err = errors.New(fmt.Sprintf("Failed to load params: %s type assertion failed", n))
+					err = errors.New(fmt.Sprintf("Invalid subscription parameter data type: ", n))
 					return
 				} else {
 					d = int32(vf)
 				}
-			case "ConcurrencyOfRetry", "Concurrency", "IntervalOfSending", "ProcessTimeout":
+			case  "ConcurrencyOfRetry", "Concurrency", "ProcessTimeout", "IntervalOfSending":
 				if vf, ok := d.(float64); !ok {
-					err = errors.New(fmt.Sprintf("Failed to load params: %s type assertion failed", n))
+					err = errors.New(fmt.Sprintf("Invalid subscription parameter data type: ", n))
 					return
 				} else {
-					d = uint16(vf)
+					d = uint32(vf)
 				}
 			}
 			reflect.ValueOf(sp).Elem().FieldByName(n).Set(reflect.ValueOf(d))
@@ -78,4 +90,13 @@ func (sp *SubscriptionParams) Load(subscriptionId int32) (err error) {
 // Store subscription params to local data.
 func (sp *SubscriptionParams) Store(subscriptionId int32) error {
 	return config.SaveConfig(sp.getFileName(subscriptionId), *sp)
+}
+
+func (sp *SubscriptionParams) LoadFromDb(subscriptionId int32) error{
+	sub, err := data.GetSubscriptionParamsById(subscriptionId)
+	if err != nil {
+		return err
+	}
+	sp.SubscriptionParams = sub
+	return nil
 }

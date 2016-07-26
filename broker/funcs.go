@@ -26,6 +26,10 @@ func New(config Config) (br Broker, err error) {
 	return
 }
 
+func NewBrokerPool(config Config, concurrency uint32)(br *beanstalk.SafeBrokerkPool, err error){
+	return beanstalk.NewSafeBrokerPool(config.Addr, concurrency)
+}
+
 // Normalize job stats type. It's affected by yaml parser.
 func NormalizeJobStats(stats *map[string]interface{}) {
 	switch (*stats)["ttr"].(type) {
@@ -50,11 +54,36 @@ func NormalizeJobStats(stats *map[string]interface{}) {
 	}
 }
 
+
+//
+// concurrency concurrent connections on each endpoint.
+func GetBrokerPoolWithBlock(concurrency uint32, retryInteral int, exitCheck func() bool) (brPool *beanstalk.SafeBrokerkPool) {
+	if exitCheck() {
+		return
+	}
+	var err error
+	for !exitCheck() {
+		st := time.Now()
+		brPool, err = beanstalk.NewSafeBrokerPool(config.GetConfig().QueueServerAddr, concurrency)
+		if err == nil {
+			return
+		} else {
+			logger.GetLogger("WARN").Printf("Failed to create broker pool: %v", err)
+			elapsed := time.Now().Sub(st)
+			du := time.Second * time.Duration(retryInteral)
+			if elapsed < du {
+				<-time.After(du - elapsed)
+			}
+		}
+	}
+	return
+}
 // GetBroker get a new broker. It will block until a broker is successfully created or Stop is called.
 // retryInterval is in seconds.
 // exitCheck returns true will break the block.
+// safeBroker whether return a coroutine safe broker.
 // returns error when exiting
-func GetBrokerWitBlock(retryInteral int, exitCheck func() bool) (br Broker, err error) {
+func GetBrokerWithBlock(retryInteral int, exitCheck func() bool) (br Broker, err error) {
 	if exitCheck() {
 		err = errors.New("Exiting!")
 		return

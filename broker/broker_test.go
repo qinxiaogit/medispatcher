@@ -3,7 +3,6 @@ package broker
 import (
 	"errors"
 	"fmt"
-	"log"
 	"testing"
 )
 
@@ -13,24 +12,6 @@ const (
 )
 
 var testConfig = Config{Addr: "127.0.0.1:11300", Type: "beanstalk"}
-
-func init() {
-	log.SetFlags(log.Lshortfile)
-	c, err := newBroker()
-	if err != nil {
-		panic(fmt.Sprintf("Failed to initialize beanstalk client: %v", err))
-	}
-	for {
-		c.Watch(Test_Queue_Name_1)
-		rJobId, _, err := c.ReserveWithTimeout(0)
-		if err != nil {
-			break
-		} else {
-			fmt.Printf("Deleting previous test job: %v\n", rJobId)
-			c.Delete(rJobId)
-		}
-	}
-}
 
 func newBroker() (Broker, error) {
 	br, err := New(testConfig)
@@ -57,10 +38,7 @@ func TestNew(re *testing.T) {
 }
 
 func TestPub(re *testing.T) {
-	err, br, jobId := pubJob()
-	if err == nil {
-		br.Delete(jobId)
-	}
+	err, _, _ := pubJob()
 	if err != nil {
 		re.Error(err)
 		re.Fail()
@@ -69,6 +47,7 @@ func TestPub(re *testing.T) {
 
 func TestReserve(re *testing.T) {
 	var jobId uint64
+	var jobBody []byte
 	err, br, pJobId := pubJob()
 	if err == nil {
 		err = br.Watch(Test_Queue_Name_1)
@@ -76,12 +55,12 @@ func TestReserve(re *testing.T) {
 
 	if err == nil {
 		for {
-			jobId, _, err = br.ReserveWithTimeout(1)
+			jobId, jobBody, err = br.ReserveWithTimeout(1)
 			if err != nil {
 				err = errors.New(fmt.Sprintf("Failed to get job previously putted: %v", err))
 				break
 			} else if jobId == pJobId {
-				br.Delete(jobId)
+				re.Logf("DELETING JOB: %v, DATA: %s, ERR: %v", jobId, jobBody, br.Delete(jobId))
 				break
 			}
 		}
@@ -90,6 +69,7 @@ func TestReserve(re *testing.T) {
 		re.Error(err)
 		re.Fail()
 	}
+	br.Close()
 }
 
 func TestStatsJob(t *testing.T) {
@@ -110,4 +90,5 @@ func TestStatsJob(t *testing.T) {
 		t.Error(err)
 		t.Fail()
 	}
+	br.Close()
 }

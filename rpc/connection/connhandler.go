@@ -224,7 +224,7 @@ func Stop(exitSigChan *chan string) {
 }
 
 // 启动本地配置服务
-func StartServer() error {
+func StartServer() {
 	var addr, netType string
 
 	addr = config.GetConfig().ListenAddr
@@ -232,7 +232,7 @@ func StartServer() error {
 	netType = "tcp"
 	server, err := net.Listen(netType, addr)
 	if err != nil {
-		return err
+		panic("Rpc Server start error:" + err.Error())
 	}
 	go connCounter(&counterCh)
 	go receiveStats()
@@ -260,7 +260,6 @@ func StartServer() error {
 		go HandleConn(&inConn)
 		counterCh <- int32(1)
 	}
-	return nil
 }
 
 // 处理获取配置的连接请求
