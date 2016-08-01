@@ -9,14 +9,14 @@ import (
 	"medispatcher/recoverwatcher"
 	rpcSrv "medispatcher/rpc/connection"
 	"medispatcher/sender"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"runtime"
 	"runtime/debug"
 	"syscall"
 	"time"
-	_ "net/http/pprof"
-	"net/http"
 )
 
 var exitSigChan = make(chan int8)
@@ -87,6 +87,7 @@ func ProcessSysSignal() {
 						time.Sleep(time.Millisecond * 40)
 					}
 				}
+				logger.Flush()
 				exitSigChan <- int8(1)
 
 			case syscall.SIGALRM:
@@ -98,9 +99,9 @@ func ProcessSysSignal() {
 				debug.FreeOSMemory()
 			case sigusr1:
 				fmt.Printf("Current goroutines: %d\n", runtime.NumGoroutine())
-			 case syscall.SIGUSR2:
-				 fmt.Printf("Current goroutines: %d\n", runtime.NumGoroutine())
-			 	//fmt.Printf("Configs: %s\n", config.GetConfig())
+			case syscall.SIGUSR2:
+				fmt.Printf("Current goroutines: %d\n", runtime.NumGoroutine())
+				//fmt.Printf("Configs: %s\n", config.GetConfig())
 			case syscall.SIGHUP:
 				curDebugMode := !config.DebugEnabled()
 				logger.GetLogger("INFO").Printf("Received force toggle DEBUG mode signal, setting DEBUG mode to : %v", curDebugMode)

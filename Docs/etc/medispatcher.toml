@@ -29,7 +29,7 @@ EnableMsgSentLog=true
 
 
 # 主队列上消息分发并发数
-ListenersOfMainQueue=20
+ListenersOfMainQueue=0
 
 # 每个订阅允许的最大并发推送数
 MaxSendersPerChannel=2

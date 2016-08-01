@@ -17,6 +17,7 @@ const (
 	ERROR_CONN_BROKEN         = "broken pipe"
 	ERROR_JOB_RESERVE_TIMEOUT = "TIMED_OUT"
 	ERROR_JOB_NOT_FOUND       = "NOT_FOUND"
+	ERROR_QUEUE_NOT_FOUND     = "NOT_FOUND"
 )
 
 const (
@@ -26,4 +27,3 @@ const (
 const (
 	BrokerName_Beanstalkd = "beanstalk"
 )
-

@@ -5,22 +5,23 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand"
 	"medispatcher/broker"
 	"medispatcher/config"
 	"medispatcher/data"
 	"medispatcher/logger"
 	httproxy "medispatcher/transproxy/http"
 	"net/url"
-	"strconv"
-	"time"
-	"strings"
-	"math/rand"
 	"regexp"
-	"sync"
 	"runtime/debug"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
 )
 
 var subHandlerWorkWg = new(sync.WaitGroup)
+
 // StartAndWait starts the recover process until Stop is called.
 func StartAndWait() {
 	procExitWG.Add(1)
@@ -194,15 +195,15 @@ func handleSubscription(sub data.SubscriptionRecord) {
 
 func sendSubscription(msgChan chan *Msg, sub data.SubscriptionRecord, sossr *StatusOfSubSenderRoutine, exitSigCh chan bool, wg *sync.WaitGroup) {
 	var (
-		err                    error
-		httpStatusCode         int
-		returnData             []byte
-		sentSuccess            bool
-		respd                  map[string]interface{}
-		errMsgInSending        string
-		msgR                    *Msg
-		logId                  uint64
-		msg                    *data.MessageStuct
+		err             error
+		httpStatusCode  int
+		returnData      []byte
+		sentSuccess     bool
+		respd           map[string]interface{}
+		errMsgInSending string
+		msgR            *Msg
+		logId           uint64
+		msg             *data.MessageStuct
 	)
 	defer func() {
 		err := recover()
@@ -219,25 +220,25 @@ func sendSubscription(msgChan chan *Msg, sub data.SubscriptionRecord, sossr *Sta
 		msgR = nil
 		select {
 		case <-exitSigCh:
-		// this case means just decrease a routine. other routines may take the message from the channel.
-		// TODO: cannot ensure there're other routines taking messages, so messages can be lost in very special cases.
-			if !shouldExit(){
+			// this case means just decrease a routine. other routines may take the message from the channel.
+			// TODO: cannot ensure there're other routines taking messages, so messages can be lost in very special cases.
+			if !shouldExit() {
 				return
 			} else {
 				// this case means the service is in exiting stage, all messages in the channel should be processed before exit.
 				if reserveTimeoutTimer == nil {
 					reserveTimeoutTimer = time.NewTimer(time.Second * DEFAULT_RESERVE_TIMEOUT)
-				} else{
+				} else {
 					reserveTimeoutTimer.Reset(time.Second * DEFAULT_RESERVE_TIMEOUT)
 				}
-				select{
+				select {
 				// all messages have been processed.
-				case <- reserveTimeoutTimer.C:
+				case <-reserveTimeoutTimer.C:
 					return
-				case msgR = <- msgChan:
+				case msgR = <-msgChan:
 				}
 			}
-		case msgR = <- msgChan:
+		case msgR = <-msgChan:
 
 		}
 		if msgR == nil {
@@ -277,6 +278,7 @@ func sendSubscription(msgChan chan *Msg, sub data.SubscriptionRecord, sossr *Sta
 				}
 			}
 			if sentSuccess {
+				// TODO: performance test for deleting messages.
 				deleteMessage(msgR)
 			} else {
 				// logging failure.
@@ -337,16 +339,16 @@ func sendSubscription(msgChan chan *Msg, sub data.SubscriptionRecord, sossr *Sta
 
 func sendSubscriptionAsRetry(msgChan chan *Msg, sub data.SubscriptionRecord, sossr *StatusOfSubSenderRoutine, exitSigCh chan bool, wg *sync.WaitGroup) {
 	var (
-		err, sendingErr        error
-		httpStatusCode         int
-		returnData             []byte
-		sentSuccess            bool
-		sentStatus             uint8
-		respd                  map[string]interface{}
-		errMsgInSending        string
-		msgR                    *Msg
-		logId                  uint64
-		msg                    *data.MessageStuct
+		err, sendingErr error
+		httpStatusCode  int
+		returnData      []byte
+		sentSuccess     bool
+		sentStatus      uint8
+		respd           map[string]interface{}
+		errMsgInSending string
+		msgR            *Msg
+		logId           uint64
+		msg             *data.MessageStuct
 	)
 
 	defer func() {
@@ -362,8 +364,8 @@ func sendSubscriptionAsRetry(msgChan chan *Msg, sub data.SubscriptionRecord, sos
 		msgR = nil
 		select {
 		case <-exitSigCh:
-		        // this case means just decrease a routine.
-			if !shouldExit(){
+			// this case means just decrease a routine.
+			if !shouldExit() {
 				return
 			} else {
 				// this case means just decrease a routine. other routines may take the message from the channel.
@@ -373,14 +375,14 @@ func sendSubscriptionAsRetry(msgChan chan *Msg, sub data.SubscriptionRecord, sos
 				} else {
 					reserveTimeoutTimer.Reset(time.Second * DEFAULT_RESERVE_TIMEOUT)
 				}
-				select{
+				select {
 				// all messages have been processed.
-				case <- reserveTimeoutTimer.C:
+				case <-reserveTimeoutTimer.C:
 					return
-				case msgR = <- msgChan:
+				case msgR = <-msgChan:
 				}
 			}
-		case msgR = <- msgChan:
+		case msgR = <-msgChan:
 
 		}
 		if msgR == nil {
@@ -436,7 +438,7 @@ func sendSubscriptionAsRetry(msgChan chan *Msg, sub data.SubscriptionRecord, sos
 				}
 			} else {
 
-				err = putToRetryChannel( &sub, msg, msgR)
+				err = putToRetryChannel(&sub, msg, msgR)
 				if err == nil {
 					deleteMessage(msgR)
 				}
@@ -506,8 +508,8 @@ func transferSubscriptionViaHttp(msg *data.MessageStuct, sub *data.SubscriptionR
 			if receptionEnv != "" {
 				tagPortions := strings.Split(strings.Trim(tag, "[]"), ":")
 				if len(tagPortions) > 1 && tagPortions[0] == "T_ENV" && tagPortions[1] == receptionEnv {
-						taggedUrls = append(taggedUrls, subUrls[i])
-					}
+					taggedUrls = append(taggedUrls, subUrls[i])
+				}
 			}
 		} else {
 			nonTaggedUrls = append(nonTaggedUrls, subUrls[i])
@@ -540,7 +542,7 @@ func transferSubscriptionViaHttp(msg *data.MessageStuct, sub *data.SubscriptionR
 	msgBody, err = json.Marshal(msg.Body)
 	if err != nil {
 		httpStatusCode = -1
-		err = errors.New(fmt.Sprintf("Failed to encode msg body: %v", err))
+		err = fmt.Errorf("Failed to encode msg body: %v", err)
 		return
 	}
 	postFields["message"] = string(msgBody)
@@ -552,11 +554,12 @@ func putToRetryChannel(sub *data.SubscriptionRecord, msg *data.MessageStuct, msg
 	delay := getRetryDelay(msg.RetryTimes+1, config.GetConfig().CoeOfIntervalForRetrySendingMsg)
 	msgData, err := data.SerializeMessage(*msg)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Failed to serialize msg: %v", err))
+		return fmt.Errorf("Failed to serialize msg: %v", err)
 	}
-	_, err = brokerCmdPools.getPool(msgR.Stats.QueueName).Pub(msgR.Stats.QueueName, msgData, broker.DEFAULT_MSG_PRIORITY, uint64(delay), msgR.Stats.TTR)
+	queueName := config.GetChannelNameForReSend(sub.Class_key, sub.Subscription_id)
+	_, err = brokerCmdPools.getPool(queueName).Pub(queueName, msgData, broker.DEFAULT_MSG_PRIORITY, uint64(delay), msgR.Stats.TTR)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Failed to put message to retry channel: %v", err))
+		return fmt.Errorf("Failed to put message to retry channel: %v", err)
 	}
 	return nil
 }

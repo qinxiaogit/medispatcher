@@ -2,13 +2,13 @@ package msgredist
 
 import (
 	"medispatcher/broker"
+	"medispatcher/broker/beanstalk"
 	"medispatcher/config"
 	"medispatcher/data"
 	"medispatcher/logger"
-	"time"
 	"runtime/debug"
-	"medispatcher/broker/beanstalk"
 	"sync"
+	"time"
 )
 
 // StartAndWait starts the redispatch process until Stop is called.
@@ -16,7 +16,7 @@ func StartAndWait() {
 	exitWg.Add(1)
 	var err error
 	var brListenPool *beanstalk.SafeBrokerkPool
-	var brCmdPool    *beanstalk.SafeBrokerkPool
+	var brCmdPool *beanstalk.SafeBrokerkPool
 	defer func() {
 		err := recover()
 		if err != nil {
@@ -40,7 +40,7 @@ func StartAndWait() {
 		return
 	}
 
-	for !shouldExit(){
+	for !shouldExit() {
 		err = brListenPool.Watch(config.GetConfig().NameOfMainQueue)
 		if err != nil {
 			logger.GetLogger("WARN").Printf("Watch main queue error: %v", err)
@@ -49,14 +49,14 @@ func StartAndWait() {
 			break
 		}
 	}
-	if shouldExit(){
+	if shouldExit() {
 		return
 	}
 
 	workerWg := new(sync.WaitGroup)
 	msgChan := brListenPool.Reserve()
 	workerRun := func() {
-		defer func(){
+		defer func() {
 			workerWg.Done()
 		}()
 
@@ -67,21 +67,21 @@ func StartAndWait() {
 			var msgR *beanstalk.Msg
 			select {
 			case <-exitChan:
-			// close to stop reserving more messages from the ready queue.
+				// close to stop reserving more messages from the ready queue.
 				brListenPool.Close(true)
-			// with timeInterval timed out, until stop signal received and all messages in the channel have been re-distributed.
-			// ensure all messages that reserved from the queue to the channel have been re-distributed.
-				if reserveTimeoutTimer == nil{
+				// with timeInterval timed out, until stop signal received and all messages in the channel have been re-distributed.
+				// ensure all messages that reserved from the queue to the channel have been re-distributed.
+				if reserveTimeoutTimer == nil {
 					reserveTimeoutTimer = time.NewTimer(time.Second * DEFAULT_RESERVE_TIMEOUT)
-				} else{
+				} else {
 					reserveTimeoutTimer.Reset(time.Second * DEFAULT_RESERVE_TIMEOUT)
 				}
 
-				select{
-					case <-reserveTimeoutTimer.C:
-						return
+				select {
+				case <-reserveTimeoutTimer.C:
+					return
 
-					case msgR = <-msgChan:
+				case msgR = <-msgChan:
 				}
 			case msgR = <-msgChan:
 
@@ -102,7 +102,7 @@ func StartAndWait() {
 				msg.OriginJobId = msgR.Id
 				jobBody, err = data.SerializeMessage(*msg)
 				if err != nil {
-					logger.GetLogger("WARN").Printf("Failed to re-serialize message: %v.", msg.MsgKey, err)
+					logger.GetLogger("WARN").Printf("Failed to re-serialize message: %v:ERR %v", msg.MsgKey, err)
 					continue
 				}
 			}
@@ -110,9 +110,9 @@ func StartAndWait() {
 			for {
 				subscriptions, err = data.GetSubscriptionsByTopicWithCache(msg.MsgKey)
 				if err != nil {
-					logger.GetLogger("WARN").Printf("Failed to get subscription information for message: %v. Try again later!", msg.MsgKey, err)
+					logger.GetLogger("WARN").Printf("Failed to get subscription information for message: %v. Try again later!:ERR %v", msg.MsgKey, err)
 					time.Sleep(time.Second * DELAY_OF_RE_DISTRIBUTE_MESSAGE_ON_FAILURE)
-				} else{
+				} else {
 					break
 				}
 			}
@@ -147,7 +147,7 @@ func StartAndWait() {
 			}
 		}
 	}
-	for n := config.GetConfig().ListenersOfMainQueue; n > 0; n-- {
+	for n := config.GetConfig().ListenersOfMainQueue * 5; n > 0; n-- {
 		workerWg.Add(1)
 		go workerRun()
 	}

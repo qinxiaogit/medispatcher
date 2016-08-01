@@ -1,27 +1,27 @@
 package beanstalk
 
 import (
-	"strings"
-	"fmt"
-	"time"
-	"sync/atomic"
 	"errors"
-	"medispatcher/logger"
+	"fmt"
 	"math/rand"
+	"medispatcher/logger"
+	"strings"
 	"sync"
+	"sync/atomic"
+	"time"
 )
 
 type errCheck struct {
 	err error
-	br *Broker
+	br  *Broker
 }
 
 type SafeBrokerkPool struct {
 	sync.RWMutex
-	poolAvailable  map[string]*Broker
-	poolBroken      map[string]*Broker
-	errCheckChan chan *errCheck
-	exitStage    chan bool
+	poolAvailable map[string]*Broker
+	poolBroken    map[string]*Broker
+	errCheckChan  chan *errCheck
+	exitStage     chan bool
 	reserveCalled int32
 }
 
@@ -30,17 +30,17 @@ func NewSafeBrokerPool(hostAddr string, concurrency uint32) (pool *SafeBrokerkPo
 		concurrency = 1
 	}
 	addrs := strings.Split(hostAddr, ",")
-	if(len(addrs) < 1){
+	if len(addrs) < 1 {
 		err = errors.New("Empty addresses.")
 	}
 
 	newPool := &SafeBrokerkPool{
 		poolAvailable: map[string]*Broker{},
-		errCheckChan: make(chan *errCheck, 100),
-		exitStage: make(chan bool),
+		errCheckChan:  make(chan *errCheck, 100),
+		exitStage:     make(chan bool),
 	}
-	defer func(){
-		if err != nil{
+	defer func() {
+		if err != nil {
 			if len(newPool.poolAvailable) > 0 {
 				for _, br := range newPool.poolAvailable {
 					br.Close()
@@ -49,8 +49,8 @@ func NewSafeBrokerPool(hostAddr string, concurrency uint32) (pool *SafeBrokerkPo
 		}
 	}()
 	var br *Broker
-	for _, hostAddr = range addrs{
-		for i := int(concurrency) - 1; i >= 0 ; i--{
+	for _, hostAddr = range addrs {
+		for i := int(concurrency) - 1; i >= 0; i-- {
 			br, err = New(hostAddr)
 			if err != nil {
 				return nil, err
@@ -63,9 +63,7 @@ func NewSafeBrokerPool(hostAddr string, concurrency uint32) (pool *SafeBrokerkPo
 	return newPool, err
 }
 
-func (p *SafeBrokerkPool) getOneBroker()*Broker{
-	p.Lock()
-	defer p.Unlock()
+func (p *SafeBrokerkPool) getOneBroker() *Broker {
 	var br *Broker
 	rand.Seed(time.Now().UnixNano())
 	i := rand.Intn(len(p.poolAvailable))
@@ -76,13 +74,10 @@ func (p *SafeBrokerkPool) getOneBroker()*Broker{
 		}
 		n++
 	}
-
 	return br
 }
 
-func (p *SafeBrokerkPool) getOneBrokerByAddr(queueServer string)*Broker{
-	p.Lock()
-	defer p.Unlock()
+func (p *SafeBrokerkPool) getOneBrokerByAddr(queueServer string) *Broker {
 	var br *Broker
 	for _, br = range p.poolAvailable {
 		if br.addr == queueServer {
@@ -92,31 +87,33 @@ func (p *SafeBrokerkPool) getOneBrokerByAddr(queueServer string)*Broker{
 	return nil
 }
 
-func (p *SafeBrokerkPool) notifyBrokerErr(br *Broker, err error){
+func (p *SafeBrokerkPool) notifyBrokerErr(br *Broker, err error) {
 	p.errCheckChan <- &errCheck{err, br}
 }
 
 // monitor connection error and rebuild it if needed.
-func (p *SafeBrokerkPool) connErrorMonitor(){
-	for{
+func (p *SafeBrokerkPool) connErrorMonitor() {
+	for {
 		errCheck := <-p.errCheckChan
 		errStr := errCheck.err.Error()
-		if errStr == ERROR_CONN_CLOSED || errStr == ERROR_CONN_BROKEN || strings.Contains(errStr, ERROR_CONN_RESET) || strings.Contains(errStr, ERROR_CONN_BROKEN){
-			select{
+		if strings.Contains(errStr, ERROR_CONN_READ_CLOSE) || errStr == ERROR_CONN_CLOSED || errStr == ERROR_CONN_BROKEN || strings.Contains(errStr, ERROR_CONN_RESET) || strings.Contains(errStr, ERROR_CONN_BROKEN) {
+			select {
 			case <-p.exitStage:
 				return
 			default:
 				errCheck.br.rebuildConn()
 			}
 		} else {
-			logger.GetLogger("WARN").Printf("Broker client get error: %v",errCheck.err)
+			logger.GetLogger("WARN").Printf("Broker client get error: %v", errCheck.err)
 		}
 	}
 }
 
 func (p *SafeBrokerkPool) Pub(queueName string, data []byte, priority uint32, delay, ttr uint64) (jobId uint64, err error) {
 	br := p.getOneBroker()
-	defer func(){
+	br.pubLocker.Lock()
+	defer func() {
+		br.pubLocker.Unlock()
 		if err != nil {
 			p.notifyBrokerErr(br, err)
 		}
@@ -130,8 +127,6 @@ func (p *SafeBrokerkPool) Pub(queueName string, data []byte, priority uint32, de
 }
 
 func (p *SafeBrokerkPool) ListTopics() (topics map[string][]string, err error) {
-	p.Lock()
-	defer p.Unlock()
 	var brTopics []string
 	topics = map[string][]string{}
 	errs := []string{}
@@ -149,15 +144,13 @@ func (p *SafeBrokerkPool) ListTopics() (topics map[string][]string, err error) {
 
 	}
 	if len(errs) > 0 {
-		err = errors.New(fmt.Sprintf("Close err: %v", errs))
+		err = fmt.Errorf("Close err: %v", errs)
 	}
 	return
 }
 
 // StatsTopic gets the topic stats on all endpoints.
 func (p *SafeBrokerkPool) StatsTopic(topicName string) (stats map[string]map[string]interface{}, err error) {
-	p.Lock()
-	defer p.Unlock()
 	var brStats map[string]interface{}
 	stats = map[string]map[string]interface{}{}
 	errs := []string{}
@@ -182,7 +175,7 @@ func (p *SafeBrokerkPool) StatsTopic(topicName string) (stats map[string]map[str
 
 func (p *SafeBrokerkPool) Release(msg *Msg, priority uint32, delay uint64) (err error) {
 	br := p.getOneBrokerByAddr(msg.QueueServer)
-	defer func(){
+	defer func() {
 		if err != nil {
 			p.notifyBrokerErr(br, err)
 		}
@@ -192,17 +185,15 @@ func (p *SafeBrokerkPool) Release(msg *Msg, priority uint32, delay uint64) (err 
 }
 
 func (p *SafeBrokerkPool) Close(force bool) {
-	p.Lock()
-	defer p.Unlock()
 	select {
 	case <-p.exitStage:
-	// already closed.
+		// already closed.
 		return
 	default:
 		close(p.exitStage)
 	}
 	for _, br := range p.poolAvailable {
-		if force{
+		if force {
 			br.ForceClose()
 		} else {
 			br.Close()
@@ -210,9 +201,7 @@ func (p *SafeBrokerkPool) Close(force bool) {
 	}
 }
 
-func (p *SafeBrokerkPool) UnWatch(topicName string)(err error){
-	p.Lock()
-	defer p.Unlock()
+func (p *SafeBrokerkPool) UnWatch(topicName string) (err error) {
 	errs := []string{}
 	for _, br := range p.poolAvailable {
 		err = br.UnWatch(topicName)
@@ -227,9 +216,7 @@ func (p *SafeBrokerkPool) UnWatch(topicName string)(err error){
 	return
 }
 
-func (p *SafeBrokerkPool) Watch(topicName string)(err error){
-	p.Lock()
-	defer p.Unlock()
+func (p *SafeBrokerkPool) Watch(topicName string) (err error) {
 	errs := []string{}
 	for _, br := range p.poolAvailable {
 		err = br.Watch(topicName)
@@ -239,7 +226,7 @@ func (p *SafeBrokerkPool) Watch(topicName string)(err error){
 		}
 	}
 	if len(errs) > 0 {
-		err = errors.New(fmt.Sprintf("Watch err: %v", errs))
+		err = fmt.Errorf("Watch err: %v", errs)
 	}
 	return
 }
@@ -248,19 +235,19 @@ func (p *SafeBrokerkPool) Watch(topicName string)(err error){
 // This function can be called only once.
 //
 // IMPORTANT: after this func is called, no further commands should be invoked, otherwise the caller goroutines maybe blocked. please consider using new pool instances for other commands.
-func (p *SafeBrokerkPool) Reserve() (msgChan chan *Msg){
+func (p *SafeBrokerkPool) Reserve() (msgChan chan *Msg) {
 	if !atomic.CompareAndSwapInt32(&p.reserveCalled, 0, 1) {
 		return
 	}
 	msgChan = make(chan *Msg)
-	reserveLoop := func(br *Broker){
-		defer func(){
+	reserveLoop := func(br *Broker) {
+		defer func() {
 			errI := recover()
 			if errI != nil {
 				logger.GetLogger("ERROR").Printf("Server routine error: %v", errI)
 			}
 		}()
-		for{
+		for {
 			select {
 			case <-p.exitStage:
 				return
@@ -269,32 +256,28 @@ func (p *SafeBrokerkPool) Reserve() (msgChan chan *Msg){
 			id, body, err := br.Reserve()
 			if err == nil {
 				// put into buried state instantly for later processing by other connections.
-				err = br.Client.Bury(id, 1024)
+				err = br.Bury(id)
 				if err == nil {
 					msgChan <- &Msg{
-					Id: id,
-					Body: body,
-					QueueServer: br.addr,
+						Id:          id,
+						Body:        body,
+						QueueServer: br.addr,
 					}
 				}
 			}
-			if err != nil{
+			if err != nil {
 				p.notifyBrokerErr(br, err)
 				time.Sleep(time.Second * 3)
 			}
 		}
 	}
-	p.Lock()
 	for _, br := range p.poolAvailable {
 		go reserveLoop(br)
 	}
-	p.Unlock()
 	return msgChan
 }
 
 func (p *SafeBrokerkPool) Stats() (stats map[string]map[string]interface{}, err error) {
-	p.Lock()
-	defer p.Unlock()
 	var brStats map[string]interface{}
 	stats = map[string]map[string]interface{}{}
 	errs := []string{}
@@ -319,7 +302,7 @@ func (p *SafeBrokerkPool) Stats() (stats map[string]map[string]interface{}, err 
 
 func (p *SafeBrokerkPool) StatsJob(msg *Msg) (stats map[string]interface{}, err error) {
 	br := p.getOneBrokerByAddr(msg.QueueServer)
-	defer func(){
+	defer func() {
 		if err != nil {
 			p.notifyBrokerErr(br, err)
 		}
@@ -333,7 +316,7 @@ func (p *SafeBrokerkPool) StatsJob(msg *Msg) (stats map[string]interface{}, err 
 
 func (p *SafeBrokerkPool) Delete(msg *Msg) (err error) {
 	br := p.getOneBrokerByAddr(msg.QueueServer)
-	defer func(){
+	defer func() {
 		if err != nil {
 			p.notifyBrokerErr(br, err)
 		}
@@ -344,7 +327,7 @@ func (p *SafeBrokerkPool) Delete(msg *Msg) (err error) {
 
 func (p *SafeBrokerkPool) Bury(msg *Msg) (err error) {
 	br := p.getOneBrokerByAddr(msg.QueueServer)
-	defer func(){
+	defer func() {
 		if err != nil {
 			p.notifyBrokerErr(br, err)
 		}
@@ -355,7 +338,7 @@ func (p *SafeBrokerkPool) Bury(msg *Msg) (err error) {
 
 func (p *SafeBrokerkPool) Peek(msg *Msg) (jobData []byte, err error) {
 	br := p.getOneBrokerByAddr(msg.QueueServer)
-	defer func(){
+	defer func() {
 		if err != nil {
 			p.notifyBrokerErr(br, err)
 		}

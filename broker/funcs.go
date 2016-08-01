@@ -26,7 +26,7 @@ func New(config Config) (br Broker, err error) {
 	return
 }
 
-func NewBrokerPool(config Config, concurrency uint32)(br *beanstalk.SafeBrokerkPool, err error){
+func NewBrokerPool(config Config, concurrency uint32) (br *beanstalk.SafeBrokerkPool, err error) {
 	return beanstalk.NewSafeBrokerPool(config.Addr, concurrency)
 }
 
@@ -54,7 +54,6 @@ func NormalizeJobStats(stats *map[string]interface{}) {
 	}
 }
 
-
 //
 // concurrency concurrent connections on each endpoint.
 func GetBrokerPoolWithBlock(concurrency uint32, retryInteral int, exitCheck func() bool) (brPool *beanstalk.SafeBrokerkPool) {
@@ -78,6 +77,7 @@ func GetBrokerPoolWithBlock(concurrency uint32, retryInteral int, exitCheck func
 	}
 	return
 }
+
 // GetBroker get a new broker. It will block until a broker is successfully created or Stop is called.
 // retryInterval is in seconds.
 // exitCheck returns true will break the block.

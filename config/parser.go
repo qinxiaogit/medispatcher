@@ -1,22 +1,30 @@
 package config
 
 import (
-	"errors"
+	"flag"
 	"fmt"
-	toml "git.oschina.net/chaos.su/go-toml"
+	"medispatcher/Alerter"
 	"os"
 	"path"
 	"path/filepath"
 	"reflect"
 	"runtime"
-	"medispatcher/Alerter"
+	"strings"
+
+	toml "git.oschina.net/chaos.su/go-toml"
 )
+
+var flags = flag.NewFlagSet("medispatcher", flag.ContinueOnError)
 
 func GetConfig() Config {
 	if config == nil {
 		panic("config not intialized, you should call config.Setup() first!")
 	}
 	return *config
+}
+
+func GetFlags() *flag.FlagSet {
+	return flags
 }
 
 func TraverseTomlTree(t *toml.TomlTree) map[string]interface{} {
@@ -37,20 +45,26 @@ func TraverseTomlTree(t *toml.TomlTree) map[string]interface{} {
 
 // 解析配置文件/etc/medispatcher.toml
 func ParseConfig() (*Config, error) {
-	var configFile string
+	var configFile, defaultConfigFile string
 	var err error
-	if len(os.Args) > 1{
-		configFile = os.Args[1]
-	} else {
-		if runtime.GOOS == "windows" {
-			clientPath, err := filepath.Abs(os.Args[0])
-			if err != nil {
-				return nil, errors.New(fmt.Sprintf("Failed to get client ABS path: %v", err))
-			}
-			configFile = path.Dir(clientPath) + string(os.PathSeparator) + "config.toml"
-		} else {
-			configFile = "/etc/medispatcher.toml"
+	if runtime.GOOS == "windows" {
+		clientPath, err := filepath.Abs(os.Args[0])
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get client ABS path: %v", err)
 		}
+		defaultConfigFile = path.Dir(clientPath) + string(os.PathSeparator) + "config.toml"
+	} else {
+		defaultConfigFile = "/etc/medispatcher.toml"
+	}
+
+	flags.StringVar(&configFile, "f", defaultConfigFile, "path to the medispatcher config file.")
+	args := []string{}
+	if len(os.Args) > 1 {
+		args = os.Args[1:]
+	}
+	flags.Parse(args)
+	if len(os.Args) == 2 && strings.Index(os.Args[1], "-") != 0 {
+		configFile = os.Args[1]
 	}
 
 	configTree, err := toml.LoadFile(configFile)
@@ -87,9 +101,9 @@ func ParseConfig() (*Config, error) {
 					for cKey, cValue := range TraverseTomlTree(sItem.(*toml.TomlTree)) {
 						cElem := cCfgRf.Elem().FieldByName(cKey)
 						if cElem.IsValid() {
-							if cKey == "PostFieldsMap"{
-								 mV := map[string]string{}
-								for k, v := range cValue.(map[string]interface{}){
+							if cKey == "PostFieldsMap" {
+								mV := map[string]string{}
+								for k, v := range cValue.(map[string]interface{}) {
 									mV[k] = v.(string)
 								}
 								cElem.Set(reflect.ValueOf(mV))

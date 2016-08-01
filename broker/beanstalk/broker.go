@@ -3,42 +3,45 @@ package beanstalk
 
 import (
 	"bufio"
-	"git.oschina.net/chaos.su/beanstalkc"
+	"medispatcher/logger"
 	"net"
 	"sync"
-	"time"
-	"medispatcher/logger"
 	"sync/atomic"
+	"time"
+
+	"git.oschina.net/chaos.su/beanstalkc"
 )
 
-const(
-	ERROR_CONN_CLOSED           = "EOF"
-	ERROR_CONN_BROKEN           = "broken pipe"
-	ERROR_CONN_RESET            = "connection reset by peer"
+const (
+	ERROR_CONN_CLOSED          = "EOF"
+	ERROR_CONN_BROKEN          = "broken pipe"
+	ERROR_CONN_RESET           = "connection reset by peer"
+	ERROR_CONN_READ_CLOSE      = "use of closed network connection"
 	DEFAULT_CONNECTION_TIMEOUT = 3
 )
 
-type longCmd struct{
+type longCmd struct {
 	name string
 	arg  string
 }
 type Broker struct {
 	beanstalkc.Client
-	addr string
-	locker *sync.Mutex
+	addr      string
+	locker    *sync.Mutex
+	pubLocker *sync.Mutex
 	// watch, unwatch, use
 	// these will be needed when rebuild connection.
-	longCmdsHistory []longCmd
+	longCmdsHistory     []longCmd
 	longCmdsHistoryLock sync.Mutex
 	// 等于1时表示正在重建链接
 	rebuildingConnection int32
 
 	currentUsingTopic string
-	exitStage chan bool
+	exitStage         chan bool
 }
 
-func createClient(hostAddr string)(*beanstalkc.Client, error){
-	conn, err := net.DialTimeout("tcp", hostAddr, time.Second * DEFAULT_CONNECTION_TIMEOUT)
+func createClient(hostAddr string) (*beanstalkc.Client, error) {
+	conn, err := net.DialTimeout("tcp", hostAddr, time.Second*DEFAULT_CONNECTION_TIMEOUT)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +59,8 @@ func New(hostAddr string) (br *Broker, err error) {
 		return
 	}
 	br = &Broker{
-		locker: new(sync.Mutex),
+		locker:    new(sync.Mutex),
+		pubLocker: new(sync.Mutex),
 	}
 	br.Client = *client
 	br.addr = hostAddr
@@ -65,54 +69,54 @@ func New(hostAddr string) (br *Broker, err error) {
 	return
 }
 
-func(br *Broker)lock(){
+func (br *Broker) lock() {
 	br.locker.Lock()
 }
 
-func(br *Broker)unlock(){
+func (br *Broker) unlock() {
 	br.locker.Unlock()
 }
 
-func (br *Broker)pushLongCmd(cmd longCmd){
+func (br *Broker) pushLongCmd(cmd longCmd) {
 	br.longCmdsHistoryLock.Lock()
 	defer br.longCmdsHistoryLock.Unlock()
 	switch cmd.name {
-		case "use":
-			for _, oCmd := range br.longCmdsHistory {
-				if oCmd.name == "use" && oCmd.arg == cmd.arg {
-					return
-				}
+	case "use":
+		for _, oCmd := range br.longCmdsHistory {
+			if oCmd.name == "use" && oCmd.arg == cmd.arg {
+				return
 			}
-			br.longCmdsHistory = append(br.longCmdsHistory, cmd)
-		case "watch":
-			newHistory := []longCmd{}
-			for _, oCmd := range br.longCmdsHistory {
-				if (oCmd.name == "watch" || oCmd.name == "unwatch") && oCmd.arg == cmd.arg {
-					continue
-				}
-				newHistory = append(newHistory, oCmd)
+		}
+		br.longCmdsHistory = append(br.longCmdsHistory, cmd)
+	case "watch":
+		newHistory := []longCmd{}
+		for _, oCmd := range br.longCmdsHistory {
+			if (oCmd.name == "watch" || oCmd.name == "unwatch") && oCmd.arg == cmd.arg {
+				continue
 			}
-			br.longCmdsHistory = append(br.longCmdsHistory, cmd)
-		case "unwatch":
-			newHistory := []longCmd{}
-			for _, oCmd := range br.longCmdsHistory {
-				if (oCmd.name == "watch" || oCmd.name == "unwatch") && oCmd.arg == cmd.arg {
-					continue
-				}
-				newHistory = append(newHistory, oCmd)
+			newHistory = append(newHistory, oCmd)
+		}
+		br.longCmdsHistory = append(br.longCmdsHistory, cmd)
+	case "unwatch":
+		newHistory := []longCmd{}
+		for _, oCmd := range br.longCmdsHistory {
+			if (oCmd.name == "watch" || oCmd.name == "unwatch") && oCmd.arg == cmd.arg {
+				continue
 			}
+			newHistory = append(newHistory, oCmd)
+		}
 	}
 }
 
-func (br *Broker) rebuildConn(){
+func (br *Broker) rebuildConn() {
 	// one rebuild routine only
-	if !atomic.CompareAndSwapInt32(&br.rebuildingConnection, 0, 1)  {
+	if !atomic.CompareAndSwapInt32(&br.rebuildingConnection, 0, 1) {
 		return
 	}
 	br.lock()
 	defer br.unlock()
 	for {
-		select{
+		select {
 		case <-br.exitStage:
 			return
 		default:
@@ -163,7 +167,8 @@ func (br *Broker) StatsTopic(topicName string) (stats map[string]interface{}, er
 func (br *Broker) StatsJob(jobId uint64) (stats map[string]interface{}, err error) {
 	br.lock()
 	defer br.unlock()
-	return br.Client.StatsJob(jobId)
+	stats, err = br.Client.StatsJob(jobId)
+	return
 }
 
 func (br *Broker) Stats() (stats map[string]interface{}, err error) {
@@ -181,11 +186,11 @@ func (br *Broker) Release(jobId uint64, priority uint32, delay uint64) (err erro
 
 func (br *Broker) Close() {
 	br.lock()
-	defer func(){
+	defer func() {
 		br.unlock()
 	}()
 
-	select{
+	select {
 	case <-br.exitStage:
 		return
 	default:
@@ -198,7 +203,7 @@ func (br *Broker) Close() {
 }
 
 func (br *Broker) ForceClose() {
-	select{
+	select {
 	case <-br.exitStage:
 		return
 	default:
@@ -210,7 +215,7 @@ func (br *Broker) ForceClose() {
 	br.Conn.Close()
 }
 
-func (br *Broker) UnWatch(topicName string)(err error){
+func (br *Broker) UnWatch(topicName string) (err error) {
 	br.lock()
 	defer br.unlock()
 	_, err = br.Client.Ignore(topicName)
@@ -224,7 +229,6 @@ func (br *Broker) Watch(topicName string) (err error) {
 	br.pushLongCmd(longCmd{"watch", topicName})
 	return br.Client.Watch(topicName)
 }
-
 
 func (br *Broker) Peek(jobId uint64) (jobData []byte, err error) {
 	br.lock()
@@ -244,13 +248,14 @@ func (br *Broker) Delete(jobId uint64) (err error) {
 	return br.Client.Delete(jobId)
 }
 
-func (br *Broker)  Reserve() (jobId uint64, jobData []byte, err error) {
+func (br *Broker) Reserve() (jobId uint64, jobData []byte, err error) {
 	br.lock()
 	defer br.unlock()
-	return br.Client.Reserve()
+	jobId, jobData, err = br.Client.Reserve()
+	return
 }
 
-func (br *Broker)  Use(topicName string) error{
+func (br *Broker) Use(topicName string) error {
 	br.lock()
 	defer br.unlock()
 	if br.currentUsingTopic == topicName {

@@ -1,6 +1,5 @@
-#MEDISPATCHER message/event dispatcher
+# MEDISPATCHER message/event dispatcher
 medispatcher is the core component of message/event center. It dispatches the messages from the main incoming queue to topic channels, pushes messages from channels to subscribers.
-
 ## About "DATA" log    
 data logs may hold very important data:
 
@@ -20,6 +19,13 @@ data logs may hold very important data:
 * __READY__ messages that are to be processed.
 * __BURIED__ messages that are being processing. if the dispatchers are stopped, and there're still messages on buried state, then they should be kicked to ready stat manually.
 * __DELETED__ messages that have been processed whether successfully or not.  
+
+## tools
+### amender
+* kick buried jobs to ready state, so processing can be continued. (buried messages are reserved from the ready state and to be processed by the workers, but for some reason they are not be deleted, .e.g.
+the process was killed and all progresses were interrupted, or unable to connect to the queue server, so the delete command was not exected.), but be reminded, the amender may produces duplicated messages, 
+on the other hand, if you donot run reminder, the subscribers may lose messages.
+ 
 
 ## Releases
 ### 2.0.0

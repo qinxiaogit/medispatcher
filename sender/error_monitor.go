@@ -6,12 +6,12 @@ import (
 	_ "medispatcher/Alerter/proxy/Email"
 	_ "medispatcher/Alerter/proxy/Sms"
 	"medispatcher/broker"
+	"medispatcher/broker/beanstalk"
 	"medispatcher/config"
 	"medispatcher/data"
 	"medispatcher/logger"
 	"sync"
 	"time"
-	"medispatcher/broker/beanstalk"
 )
 
 type errorSubscriptionCheck struct {
@@ -84,7 +84,7 @@ func (em *errorMonitor) addSubscriptionCheck(sub *data.SubscriptionRecord, subPa
 			errorCountStartTime: time.Now().Unix(),
 		}
 	} else {
-		sc.errorSum += 1
+		sc.errorSum++
 	}
 	errorSum := sc.errorSum
 	var shouldAlert, reCount bool
@@ -167,7 +167,7 @@ func (em *errorMonitor) addMessageCheck(sub *data.SubscriptionRecord, subParam S
 	count := errorTimes + 1
 	for count <= maxRetry {
 		delay += getRetryDelay(count, coe)
-		count += 1
+		count++
 	}
 	emailMsg := fmt.Sprintf(
 		"订阅者(%v)处理当前消息失败已达%v次，即将超限: %v .\n您有大概%v分钟进行修复.\n订阅ID: %v\n处理地址: %v\n日志ID: %v,请到后台查看更多。\n错误: %v\n退订此报警请到管理后台-订阅管理中操作。",
@@ -217,13 +217,13 @@ func (em *errorMonitor) checkQueueBlocks() {
 	if em.alerterEmail == nil && em.alerterSms == nil {
 		return
 	}
-	brPool  = broker.GetBrokerPoolWithBlock(1, 3, shouldExit)
+	brPool = broker.GetBrokerPoolWithBlock(1, 3, shouldExit)
 	if brPool == nil {
 		return
 	}
 	alertStatistics := map[int32]int64{}
 	for {
-		time.Sleep(time.Second * 5)
+		time.Sleep(time.Second * 15)
 		subscriptions, err := data.GetAllSubscriptionsWithCache()
 		if err != nil {
 			logger.GetLogger("WARN").Printf("Failed to get subscriptions: %v", err)
@@ -250,12 +250,16 @@ func (em *errorMonitor) checkQueueBlocks() {
 
 				stats, errOfQueue = brPool.StatsTopic(queueName)
 				if errOfQueue != nil {
-					logger.GetLogger("WARN").Printf("%v ERR: %v", queueName, errOfQueue)
+					if broker.ERROR_QUEUE_NOT_FOUND != errOfQueue.Error() {
+						logger.GetLogger("WARN").Printf("%v ERR: %v", queueName, errOfQueue)
+					}
 					continue
 				}
 				reQueueStats, errOfReQueue = brPool.StatsTopic(reQueueName)
 				if errOfReQueue != nil {
-					logger.GetLogger("WARN").Printf("%v ERR: %v", reQueueName, reQueueStats)
+					if broker.ERROR_QUEUE_NOT_FOUND != errOfQueue.Error() {
+						logger.GetLogger("WARN").Printf("%v ERR: %v", reQueueName, reQueueStats)
+					}
 					continue
 				}
 				for _, s := range stats {
