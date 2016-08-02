@@ -152,7 +152,7 @@ func (w *DatetimeLogFileWriter) tickFlush() {
 			bufLen := len(w.msgBuf)
 			select {
 			case <-tickerFlush.C:
-				if len(w.msgBuf) > 0 && w.getFlushLock() {
+				if bufLen > 0 && w.getFlushLock() {
 					err = w.flush(bufLen)
 					w.releaseFlushLock()
 				}
