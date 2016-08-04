@@ -25,7 +25,9 @@ data logs may hold very important data:
 * kick buried jobs to ready state, so processing can be continued. (buried messages are reserved from the ready state and to be processed by the workers, but for some reason they are not be deleted, .e.g.
 the process was killed and all progresses were interrupted, or unable to connect to the queue server, so the delete command was not exected.), but be reminded, the amender may produces duplicated messages, 
 on the other hand, if you donot run reminder, the subscribers may lose messages.
- 
+
+e.g.    
+`./amender -f /path/to/medispatcher_config_file`
 
 ## Releases
 ### 2.0.0
