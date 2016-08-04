@@ -144,7 +144,7 @@ func (p *SafeBrokerkPool) ListTopics() (topics map[string][]string, err error) {
 
 	}
 	if len(errs) > 0 {
-		err = fmt.Errorf("Close err: %v", errs)
+		err = fmt.Errorf("List topics err: %v", errs)
 	}
 	return
 }
@@ -168,7 +168,7 @@ func (p *SafeBrokerkPool) StatsTopic(topicName string) (stats map[string]map[str
 
 	}
 	if len(errs) > 0 {
-		err = fmt.Errorf("Close err: %v", errs)
+		err = fmt.Errorf("Stats topic err: %v", errs)
 	}
 	return
 }

@@ -10,6 +10,7 @@ import (
 	"medispatcher/config"
 	"medispatcher/data"
 	"medispatcher/logger"
+	"strings"
 	"sync"
 	"time"
 )
@@ -250,14 +251,16 @@ func (em *errorMonitor) checkQueueBlocks() {
 
 				stats, errOfQueue = brPool.StatsTopic(queueName)
 				if errOfQueue != nil {
-					if broker.ERROR_QUEUE_NOT_FOUND != errOfQueue.Error() {
+					// TODO: may contains multiple error types
+					if strings.Contains(errOfQueue.Error(), broker.ERROR_QUEUE_NOT_FOUND) {
 						logger.GetLogger("WARN").Printf("%v ERR: %v", queueName, errOfQueue)
 					}
 					continue
 				}
 				reQueueStats, errOfReQueue = brPool.StatsTopic(reQueueName)
 				if errOfReQueue != nil {
-					if broker.ERROR_QUEUE_NOT_FOUND != errOfQueue.Error() {
+					// TODO: may contains multiple error types
+					if strings.Contains(errOfReQueue.Error(), broker.ERROR_QUEUE_NOT_FOUND) {
 						logger.GetLogger("WARN").Printf("%v ERR: %v", reQueueName, reQueueStats)
 					}
 					continue
