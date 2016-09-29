@@ -9,6 +9,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"git.oschina.net/chaos.su/beanstalkc"
 )
 
 type errCheck struct {
@@ -18,11 +20,12 @@ type errCheck struct {
 
 type SafeBrokerkPool struct {
 	sync.RWMutex
-	poolAvailable map[string]*Broker
-	poolBroken    map[string]*Broker
-	errCheckChan  chan *errCheck
-	exitStage     chan bool
-	reserveCalled int32
+	poolAvailable   map[string]*Broker
+	poolBroken      map[string]*Broker
+	errCheckChan    chan *errCheck
+	exitStage       chan bool
+	reserveCalled   int32
+	reserveStopChan chan bool
 }
 
 func NewSafeBrokerPool(hostAddr string, concurrency uint32) (pool *SafeBrokerkPool, err error) {
@@ -184,6 +187,17 @@ func (p *SafeBrokerkPool) Release(msg *Msg, priority uint32, delay uint64) (err 
 	return
 }
 
+func (p *SafeBrokerkPool) KickJob(quename string, msg *Msg) (err error) {
+	br := p.getOneBrokerByAddr(msg.QueueServer)
+	defer func() {
+		if err != nil {
+			p.notifyBrokerErr(br, err)
+		}
+	}()
+	err = br.KickJob(msg.Id)
+	return
+}
+
 func (p *SafeBrokerkPool) Close(force bool) {
 	select {
 	case <-p.exitStage:
@@ -231,6 +245,24 @@ func (p *SafeBrokerkPool) Watch(topicName string) (err error) {
 	return
 }
 
+func (p *SafeBrokerkPool) StopReserve() {
+	if p.reserveStopChan == nil {
+		return
+	}
+	close(p.reserveStopChan)
+}
+
+func (p *SafeBrokerkPool) shouldStopReseve() bool {
+	select {
+	case <-p.exitStage:
+		return true
+	case <-p.reserveStopChan:
+		return true
+	default:
+		return false
+	}
+}
+
 // Reserve messages from all beanstalkd servers.
 // This function can be called only once.
 //
@@ -239,6 +271,8 @@ func (p *SafeBrokerkPool) Reserve() (msgChan chan *Msg) {
 	if !atomic.CompareAndSwapInt32(&p.reserveCalled, 0, 1) {
 		return
 	}
+	// TODO: may has data race with StopReserve method.
+	p.reserveStopChan = make(chan bool, 1)
 	msgChan = make(chan *Msg)
 	reserveLoop := func(br *Broker) {
 		defer func() {
@@ -248,13 +282,15 @@ func (p *SafeBrokerkPool) Reserve() (msgChan chan *Msg) {
 			}
 		}()
 		for {
-			select {
-			case <-p.exitStage:
+			if p.shouldStopReseve() {
 				return
-			default:
 			}
 			id, body, err := br.Reserve()
 			if err == nil {
+				if p.shouldStopReseve() {
+					br.Release(id, beanstalkc.DEFAULT_MSG_PRIORITY, 0)
+					return
+				}
 				// put into buried state instantly for later processing by other connections.
 				err = br.Bury(id)
 				if err == nil {

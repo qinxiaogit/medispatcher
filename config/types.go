@@ -4,21 +4,22 @@ import "medispatcher/Alerter"
 
 type Config struct {
 	// ListenAddr is the network address for providing extra api calls.
-	ListenAddr string
+	ListenAddr       string
+	DebugAddr        string
 	StatisticApiAddr string
-	InstallDir string
-	PidFile    string
-	LOG_DIR    string
-	DATA_DIR   string
+	InstallDir       string
+	PidFile          string
+	LOG_DIR          string
+	DATA_DIR         string
 	// Environment tag for the message reception(worker) addresses.
 	RECEPTION_ENV string
 
-	QueueServerType      string
-	QueueServerAddr      string
-	QueueServerPoolCmdConnCount uint32
+	QueueServerType                string
+	QueueServerAddr                string
+	QueueServerPoolCmdConnCount    uint32
 	QueueServerPoolListenConnCount uint32
-	NameOfMainQueue      string
-	PrefixOfChannelQueue string
+	NameOfMainQueue                string
+	PrefixOfChannelQueue           string
 
 	// Database client settings
 	//	Port     int32

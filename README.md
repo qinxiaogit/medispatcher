@@ -1,5 +1,8 @@
 # MEDISPATCHER message/event dispatcher
 medispatcher is the core component of message/event center. It dispatches the messages from the main incoming queue to topic channels, pushes messages from channels to subscribers.
+
+## Configuration
+refers to `Docs/etc/medispatcher.toml` .
 ## About "DATA" log    
 data logs may hold very important data:
 
@@ -9,8 +12,7 @@ data logs may hold very important data:
 * __RECOVFAILASSERT__  messages popped from recover list(redis list), decoded, but its type it not correct.
 * __DELFAIL__  messages that failed to be deleted, and will lead to duplicated messages.   
 * __DECODERR__ messages that failed to be decoded.
-  
-
+* __KICKFAIL__ messages that failed to be kicked to ready state from buried state. these messages wont be pushed to the subscribers, until being kicked to ready state manually.
 * __RESENT__  _not so important._ message re-sent (to subscriber) logs.
 * __SENT__  _not so important._ message sent (to subscriber for the first time) logs.
 
@@ -66,23 +68,32 @@ First release of v2.
 ## Milestone
 
 ### 2.1.0
-####Features    
+#### Features    
 
 * Performance parameters can be controlled as to each subscription on the backend control panel.    
  parameters are: count of concurrent push routines for the subscription, count of concurrent retry-push routines for the subscription, minimum interval between pushes.
  
 ### 2.2.0
-####Features    
+#### Features    
 * Alerts when message processing failures reaches certain thresholds.    
 * Customizable config file    
  e.g. medispatcher /path/to/config/file
 * Multiple message processing worker url support. The urls can be multi-lined, each line represents a separate worker url. This achieves a soft load balance. 
 
 ### 2.3.0
-####Features
+#### Features
 * Performance and message server link utilization enhancement. A link can binds to multiple message pushing routines.
  
+### 2.3.1
+#### Features
+* Added help commandline args.
+* Added version display commandline args.
+
+#### Fix
+* fixed un-handled buried messages on exits.
+* fixed service may not exits gracefully.
+  
 ### 2.4.0
-####Features
+#### Features
 
 * Messages sent/received statistics

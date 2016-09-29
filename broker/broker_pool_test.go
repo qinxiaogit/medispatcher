@@ -1,14 +1,15 @@
 package broker
 
 import (
-	"testing"
-	"medispatcher/broker/beanstalk"
-	"github.com/labstack/gommon/log"
-	"time"
 	"fmt"
+	"medispatcher/broker/beanstalk"
+	"testing"
+	"time"
+
+	"github.com/labstack/gommon/log"
 )
 
-func TestPool(t *testing.T){
+func TestPool(t *testing.T) {
 	brRs, err := beanstalk.NewSafeBrokerPool("127.0.0.1:11300,127.0.0.1:11301", 1)
 	if err != nil {
 		t.Error(err)
@@ -30,20 +31,34 @@ func TestPool(t *testing.T){
 		log.Printf("Pub Job: %v", jobId)
 	}
 	brRs.Watch(Test_Queue_Name_1)
-	timeout := time.After(time.Second * 2)
+	timer := time.NewTimer(time.Second * 2)
 	msgChan := brRs.Reserve()
-	FM:
-	for{
-		println("ABCD")
+	var deletedJobs = map[uint64]bool{}
+FM:
+	for {
 		select {
-			case msg := <- msgChan:
-				t.Logf("Fetched Message: ID: %v, SrvAddr: %v, Data: %s", msg.Id, msg.QueueServer, msg.Body)
-				err = brWD.Delete(msg)
-				if err != nil {
-					t.Error(err)
-				}
-			case <- timeout:
-				break FM
+		case msg := <-msgChan:
+			if _, ok := deletedJobs[msg.Id]; ok {
+				continue
+			}
+			timer.Reset(time.Second * 2)
+			t.Logf("Fetched Message: ID: %v, SrvAddr: %v, Data: %s", msg.Id, msg.QueueServer, msg.Body)
+			err = brWD.KickJob(Test_Queue_Name_1, msg)
+			if err != nil {
+				t.Errorf("kick msg failed: %+v failed : %v", msg.Id, err)
+			} else {
+				t.Logf("kicked: %v", msg.Id)
+			}
+			time.Sleep(time.Millisecond * 10)
+			err = brWD.Delete(msg)
+			if err != nil {
+				t.Errorf("delete msg failed: %v, %v", msg.Id, err)
+			} else {
+				t.Logf("deleted: %v", msg.Id)
+				deletedJobs[msg.Id] = true
+			}
+		case <-timer.C:
+			break FM
 		}
 	}
 	brWD.Close(false)

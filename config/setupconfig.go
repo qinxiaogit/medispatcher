@@ -12,6 +12,7 @@ import (
 )
 
 const (
+	VerNo           = "2.3.1"
 	MAX_CONNECTIONS = 15000
 	// 客户端响应超时
 	CLIENT_TIMEOUT  = time.Second * 5
@@ -22,16 +23,16 @@ const (
 
 var debug bool
 
-
 var config = &Config{
 	QueueServerType:                      "beanstalk",
 	ListenAddr:                           "0.0.0.0:5601",
+	DebugAddr:                            ":9898",
 	StatisticApiAddr:                     "0.0.0.0:5606",
 	NameOfMainQueue:                      "main-incoming-queue",
 	PrefixOfChannelQueue:                 "sub-queue/",
 	QueueServerAddr:                      "127.0.0.1:11300",
-	QueueServerPoolListenConnCount:          2,
-	QueueServerPoolCmdConnCount:             1,
+	QueueServerPoolListenConnCount:       2,
+	QueueServerPoolCmdConnCount:          1,
 	ListenersOfMainQueue:                 uint16(1),
 	SendersPerChannel:                    uint32(1),
 	MaxSendersPerChannel:                 uint32(10),
@@ -46,7 +47,6 @@ var config = &Config{
 	MsgQueueFaultToleranceListNamePrefix: "mec_list_of_msg_for_restore_to_queue_server:",
 	DATA_DIR: "/var/lib/medispatcher/",
 }
-
 
 //	TODO: not coroutine safe
 func DebugEnabled() bool {

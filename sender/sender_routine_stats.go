@@ -1,9 +1,9 @@
 package sender
+
 import (
 	"errors"
 	"fmt"
 )
-
 
 // SenderRoutineStats holds the statistics of all sender routines that handles the subscriptions.
 type SenderRoutineStats struct {
@@ -61,8 +61,18 @@ func (srs *SenderRoutineStats) getHandlingSubscriptionIds() []int32 {
 	srs.lock()
 	defer srs.unlock()
 	ids := []int32{}
-	for id, _ := range (*srs).routineStatus {
+	for id := range (*srs).routineStatus {
 		ids = append(ids, id)
 	}
 	return ids
+}
+
+func (srs *SenderRoutineStats) getRoutineCount() uint64 {
+	srs.lock()
+	defer srs.unlock()
+	var c uint64
+	for _, r := range srs.routineStatus {
+		c += uint64(r.GetCoCount()) + uint64(r.GetCoCountOfRetry())
+	}
+	return c
 }

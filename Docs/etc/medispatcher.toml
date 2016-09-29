@@ -4,12 +4,17 @@ DAEMON_USER="chaos"
 
 LOG_DIR="/var/log/medispatcher"
 
+DATA_DIR="/var/lib/medispatcher/"
+
 # 消息(接收)处理者环境。如果有设置，则根据消息处理地址的T_ENV标签（若发现带标签的地址）进行选择处理地址。
 # 如: "PUB","STAG"
-RECEPTION_ENV="PUB"
+# RECEPTION_ENV="PUB"
 
 # 提供RPC服务的地址. 如：缓存清除、参数动态调节等。
 ListenAddr="0.0.0.0:5601"
+
+# 性能调试端口
+DebugAddr=":9898"
 
 # 统计数据服务地址. 默认: 5606
 StatisticApiAddr="0.0.0.0:5606"
@@ -32,7 +37,7 @@ EnableMsgSentLog=true
 
 
 # 主队列上消息分发并发数
-ListenersOfMainQueue=0
+ListenersOfMainQueue=1
 
 # 每个订阅允许的最大并发推送数
 MaxSendersPerChannel=2

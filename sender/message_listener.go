@@ -46,8 +46,10 @@ func (bp *brokerPools) getPool(name string) *beanstalk.SafeBrokerkPool {
 func (bp *brokerPools) removePool(name string) {
 	bp.Lock()
 	defer bp.Unlock()
-	bp.pools[name].Close(true)
-	delete(bp.pools, name)
+	if _, exists := bp.pools[name]; exists {
+		bp.pools[name].Close(true)
+		delete(bp.pools, name)
+	}
 }
 
 func (bp *brokerPools) len() int {
@@ -83,6 +85,7 @@ func newMessasgeListener(queueName string, subParam *SubscriptionParams, exitSig
 	msgChan = make(chan *Msg)
 	go func() {
 		defer func() {
+			brokerListenPools.removePool(queueName)
 			errI := recover()
 			if errI != nil {
 				logger.GetLogger("ERROR").Printf("Listenner for %v exited abnormally: %s....%s", queueName, errI, debug.Stack())
@@ -123,17 +126,22 @@ func newMessasgeListener(queueName string, subParam *SubscriptionParams, exitSig
 			select {
 			case <-exitSigChan:
 				if reserveTimeoutTimer == nil {
-					// exit stage, close the brokers to make no more reserved messages.
-					brReservePool.Close(true)
+					// exit stage, reserve no more messages.
+					brReservePool.StopReserve()
 					reserveTimeoutTimer = time.NewTimer(time.Second * DEFAULT_RESERVE_TIMEOUT)
 				} else {
 					reserveTimeoutTimer.Reset(time.Second * DEFAULT_RESERVE_TIMEOUT)
 				}
-				// exit stage, wait for all reserved messages to be sent.
+				// exit stage, reset for all reserved messages to ready state.
 				select {
 				case <-reserveTimeoutTimer.C:
 					return
 				case brMsg = <-brMsgChan:
+					err = brokerCmdPools.getPool(queueName).KickJob(queueName, brMsg)
+					if err != nil {
+						logger.GetLogger("DATA").Printf("KICKFAIL %v %v %v", brMsg.QueueServer, brMsg.Id, string(brMsg.Body))
+					}
+					continue
 				}
 			case brMsg = <-brMsgChan:
 			}
@@ -141,20 +149,23 @@ func newMessasgeListener(queueName string, subParam *SubscriptionParams, exitSig
 			if brMsg == nil {
 				continue
 			}
+
 			msg := &Msg{Msg: brMsg}
-			// jobStats, err = brokerCmdPools.getPool(queueName).StatsJob(brMsg)
-			// if err != nil {
-			// 	logger.GetLogger("WARN").Printf("Failed to stats job[%v] on channel: %v ERR: %v", brMsg.Id, queueName, err)
-			// 	continue
-			// }
-			// broker.NormalizeJobStats(&jobStats)
-			// b, _ := json.Marshal(jobStats)
-			// json.Unmarshal(b, &(brMsg.Stats))
 			msg.Msg.Stats.QueueName = queueName
 			msg.Msg.Stats.Delay = 0
 			msg.Msg.Stats.Pri = broker.DEFAULT_MSG_PRIORITY
 			msg.Msg.Stats.TTR = broker.DEFAULT_MSG_TTR
-			msgChan <- msg
+			select {
+			case msgChan <- msg:
+			// 消息推送流程可能已经退出. 将消息放回队列.
+			case <-exitSigChan:
+				err = brokerCmdPools.getPool(queueName).KickJob(queueName, brMsg)
+				if err != nil {
+					logger.GetLogger("DATA").Printf("KICKFAIL %v %v %v", msg.QueueServer, msg.Id, string(msg.Body))
+				}
+				continue
+			}
+
 			tn := time.Now()
 			elapsed := tn.Sub(st)
 			minDu := time.Millisecond * time.Duration(subParam.IntervalOfSending)
@@ -244,23 +255,24 @@ func listenAndDeleteMessage() {
 	// cleanup all undeleted messages after the messge deleting workers exited.
 CLEANUP_DEL:
 	for {
-		for {
-			if reserveTimeoutTimer == nil {
-				reserveTimeoutTimer = time.NewTimer(time.Second * DEFAULT_RESERVE_TIMEOUT)
-			} else {
-				reserveTimeoutTimer.Reset(time.Second * DEFAULT_RESERVE_TIMEOUT)
-			}
-			select {
-			case <-reserveTimeoutTimer.C:
-				// all messages that to be deleted are  deleted
+		if reserveTimeoutTimer == nil {
+			reserveTimeoutTimer = time.NewTimer(time.Second * DEFAULT_RESERVE_TIMEOUT)
+		} else {
+			reserveTimeoutTimer.Reset(time.Second * DEFAULT_RESERVE_TIMEOUT)
+		}
+		select {
+		case <-reserveTimeoutTimer.C:
+			// all messages that to be deleted are  deleted.
+			// all sender routines had done their work.
+			if senderRoutineStats.getRoutineCount() < 1 {
 				break CLEANUP_DEL
-			case msg := <-jobDeleteChan:
-				err := brokerCmdPools.getPool(msg.Stats.QueueName).Delete(msg.Msg)
-				if err != nil {
-					//TODO: deal with not deleted job ids.
-					logger.GetLogger("WARN").Printf("Failed to delete job[%v] ERR: %v", msg.Id, err)
-					logger.GetLogger("DATA").Printf("DELFAIL %v %v %v", msg.QueueServer, msg.Id, string(msg.Body))
-				}
+			}
+		case msg := <-jobDeleteChan:
+			err := brokerCmdPools.getPool(msg.Stats.QueueName).Delete(msg.Msg)
+			if err != nil {
+				//TODO: deal with not deleted job ids.
+				logger.GetLogger("WARN").Printf("Failed to delete job[%v] ERR: %v", msg.Id, err)
+				logger.GetLogger("DATA").Printf("DELFAIL %v %v %v", msg.QueueServer, msg.Id, string(msg.Body))
 			}
 		}
 	}

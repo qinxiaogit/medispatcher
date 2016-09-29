@@ -19,16 +19,16 @@ import (
 	"time"
 )
 
-var exitSigChan = make(chan int8)
+var exitSigChan = make(chan bool)
 
 func main() {
-	go http.ListenAndServe(":9898", nil)
 	err := config.Setup()
 	if err != nil {
 		fmt.Printf("Failed to setup configs: %v", err)
 		os.Exit(1)
 	}
 
+	go http.ListenAndServe(config.GetConfig().DebugAddr, nil)
 	maxProcs := runtime.NumCPU()
 	if maxProcs > 1 {
 		maxProcs--
@@ -88,7 +88,7 @@ func ProcessSysSignal() {
 					}
 				}
 				logger.Flush()
-				exitSigChan <- int8(1)
+				close(exitSigChan)
 
 			case syscall.SIGALRM:
 				logger.GetLogger("INFO").Print("Received manual GC signal, starting free OS memory!")

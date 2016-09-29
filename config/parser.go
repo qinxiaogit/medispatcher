@@ -1,8 +1,10 @@
 package config
 
 import (
+	"crypto/md5"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"medispatcher/Alerter"
 	"os"
 	"path"
@@ -43,7 +45,7 @@ func TraverseTomlTree(t *toml.TomlTree) map[string]interface{} {
 	return mm
 }
 
-// 解析配置文件/etc/medispatcher.toml
+// ParseConfig 解析配置文件/etc/medispatcher.toml
 func ParseConfig() (*Config, error) {
 	var configFile, defaultConfigFile string
 	var err error
@@ -56,13 +58,34 @@ func ParseConfig() (*Config, error) {
 	} else {
 		defaultConfigFile = "/etc/medispatcher.toml"
 	}
-
+	var showHelp, showVersion bool
 	flags.StringVar(&configFile, "f", defaultConfigFile, "path to the medispatcher config file.")
+	flags.BoolVar(&showHelp, "h", false, "show help message.")
+	flags.BoolVar(&showHelp, "help", false, "show help message.")
+	flags.BoolVar(&showVersion, "version", false, "show version information.")
+
 	args := []string{}
 	if len(os.Args) > 1 {
 		args = os.Args[1:]
 	}
 	flags.Parse(args)
+	if showHelp {
+		flags.PrintDefaults()
+	}
+
+	if showVersion {
+		fb, err := ioutil.ReadFile(os.Args[0])
+		if err == nil {
+			filehash := fmt.Sprintf("%x", md5.Sum(fb))
+			fmt.Printf("medispatcher %v(%v)\r\n", VerNo, filehash)
+		} else {
+			fmt.Printf("medispatcher %v\r\n", VerNo)
+		}
+	}
+
+	if showHelp || showVersion {
+		os.Exit(0)
+	}
 	if len(os.Args) == 2 && strings.Index(os.Args[1], "-") != 0 {
 		configFile = os.Args[1]
 	}
