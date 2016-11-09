@@ -24,6 +24,7 @@ type SafeBrokerkPool struct {
 	poolBroken      map[string]*Broker
 	errCheckChan    chan *errCheck
 	exitStage       chan bool
+	closeLock        *sync.Mutex
 	reserveCalled   int32
 	reserveStopChan chan bool
 }
@@ -41,6 +42,7 @@ func NewSafeBrokerPool(hostAddr string, concurrency uint32) (pool *SafeBrokerkPo
 		poolAvailable: map[string]*Broker{},
 		errCheckChan:  make(chan *errCheck, 100),
 		exitStage:     make(chan bool),
+		closeLock:     new(sync.Mutex),
 	}
 	defer func() {
 		if err != nil {
@@ -114,9 +116,9 @@ func (p *SafeBrokerkPool) connErrorMonitor() {
 
 func (p *SafeBrokerkPool) Pub(queueName string, data []byte, priority uint32, delay, ttr uint64) (jobId uint64, err error) {
 	br := p.getOneBroker()
-	br.pubLocker.Lock()
+	br.transLocker.Lock()
 	defer func() {
-		br.pubLocker.Unlock()
+		br.transLocker.Unlock()
 		if err != nil {
 			p.notifyBrokerErr(br, err)
 		}
@@ -199,6 +201,8 @@ func (p *SafeBrokerkPool) KickJob(quename string, msg *Msg) (err error) {
 }
 
 func (p *SafeBrokerkPool) Close(force bool) {
+	p.closeLock.Lock()
+	defer p.closeLock.Unlock()
 	select {
 	case <-p.exitStage:
 		// already closed.

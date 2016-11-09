@@ -21,6 +21,7 @@ import (
 )
 
 var subHandlerWorkWg = new(sync.WaitGroup)
+var subscriptionHandlerSpwanLock = new(sync.RWMutex)
 
 // StartAndWait starts the recover process until Stop is called.
 func StartAndWait() {
@@ -36,7 +37,7 @@ func StartAndWait() {
 		} else {
 			for _, sub := range subscriptions {
 				if !senderRoutineStats.statusExists(sub.Subscription_id) {
-					handleSubscription(sub)
+					go handleSubscription(sub)
 				}
 			}
 		}
@@ -58,8 +59,9 @@ func StartAndWait() {
 				}
 			}
 		}
-		time.Sleep(time.Second * 1)
+		time.Sleep(time.Second * 2)
 	}
+	subscriptionHandlerSpwanLock.Lock()
 	// exit
 	for _, status := range senderRoutineStats.routineStatus {
 		(*status).sigChan <- SENDER_ROUTINE_SIG_EXIT_ALL_ROUTINES
@@ -72,7 +74,19 @@ func StartAndWait() {
 
 // handel a subscription.
 func handleSubscription(sub data.SubscriptionRecord) {
+	subscriptionHandlerSpwanLock.RLock()
+	defer subscriptionHandlerSpwanLock.RUnlock()
 	subParams := NewSubscriptionParams()
+	sossr := StatusOfSubSenderRoutine{
+		subscription:   &sub,
+		coCount:        0,
+		coCountOfRetry: 0,
+		sigChan:        make(chan SubSenderRoutineChanSig, 1),
+		subParams:      subParams,
+	}
+	senderRoutineStats.addStatus(sub.Subscription_id, &sossr)
+
+
 	err := subParams.RefreshAndLoad(sub.Subscription_id)
 	if err != nil {
 		logger.GetLogger("INFO").Printf("Failed to load subscription params: %v, ignore customized subscription performance params.", err)
@@ -108,14 +122,7 @@ func handleSubscription(sub data.SubscriptionRecord) {
 	}
 
 	senderWorkerWg := new(sync.WaitGroup)
-	sossr := StatusOfSubSenderRoutine{
-		subscription:   &sub,
-		coCount:        0,
-		coCountOfRetry: 0,
-		sigChan:        make(chan SubSenderRoutineChanSig, 1),
-		subParams:      subParams,
-	}
-	senderRoutineStats.addStatus(sub.Subscription_id, &sossr)
+
 	senderRoutineExitSigChans := []chan bool{}
 	senderRoutineOfRetryExitSigChans := []chan bool{}
 	for i := uint32(0); i < subParams.Concurrency; i++ {

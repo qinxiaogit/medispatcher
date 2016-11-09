@@ -46,7 +46,6 @@ func LogFailure(message *MessageStuct, subscription SubscriptionRecord, errorMes
 		err = errors.New(fmt.Sprintf("Failed to get db: %v", err))
 		return
 	}
-	defer db.Release()
 
 	// new failure log
 	if logId < 1 {
@@ -102,7 +101,6 @@ func FailureLogExists(logId uint64) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	defer db.Release()
 	rows, err := db.Query(sqlStr, logId)
 	if err != nil {
 		return false, err
@@ -143,11 +141,7 @@ func GetFailureLogInfoById(logId uint64) (rec FailureLogRecord, err error) {
 	if err != nil {
 		return
 	}
-	defer db.Release()
-	row, err = db.QueryRow(sqlStr, logId)
-	if err != nil {
-		return
-	}
+	row = db.QueryRow(sqlStr, logId)
 
 	err = row.Scan(&rec.Log_id, &rec.Message_class_id, &rec.Subscriber_id, &rec.Time,
 		&rec.Message_body, &rec.Retry_times, &rec.Last_retry_time, &rec.Last_failure_message,
@@ -171,7 +165,6 @@ func SetFinalStatusOfFailureLog(logId uint64, status uint8, alive uint8, retryTi
 	if err != nil {
 		return
 	}
-	defer db.Release()
 	var last_retry_time int64
 	if retryTimes > 0 {
 		last_retry_time = time.Now().Unix()

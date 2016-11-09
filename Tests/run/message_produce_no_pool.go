@@ -36,7 +36,7 @@ var statsAll = StatsAll{
 }
 var statsCollectStartTime time.Time
 
-var consumerC = 500
+var consumerC = 10
 var consumerConnections = uint32(30)
 var consumerCounterChan = make(chan int, 1000)
 var wg = sync.WaitGroup{}

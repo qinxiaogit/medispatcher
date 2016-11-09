@@ -84,6 +84,7 @@ type Msg struct {
 func newMessasgeListener(queueName string, subParam *SubscriptionParams, exitSigChan chan bool) (msgChan chan *Msg) {
 	msgChan = make(chan *Msg)
 	go func() {
+		logger.GetLogger("DEBUG").Printf("try to watch queue %v.", queueName)
 		defer func() {
 			brokerListenPools.removePool(queueName)
 			errI := recover()
@@ -113,6 +114,7 @@ func newMessasgeListener(queueName string, subParam *SubscriptionParams, exitSig
 				logger.GetLogger("WARN").Println(err)
 				continue
 			} else {
+				logger.GetLogger("DEBUG").Printf("Watching queue %v.", queueName)
 				break
 			}
 
@@ -156,6 +158,7 @@ func newMessasgeListener(queueName string, subParam *SubscriptionParams, exitSig
 			msg.Msg.Stats.Pri = broker.DEFAULT_MSG_PRIORITY
 			msg.Msg.Stats.TTR = broker.DEFAULT_MSG_TTR
 			select {
+			// 推入消息处理队列,由sender处理.
 			case msgChan <- msg:
 			// 消息推送流程可能已经退出. 将消息放回队列.
 			case <-exitSigChan:

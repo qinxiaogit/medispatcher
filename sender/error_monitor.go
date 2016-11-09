@@ -288,13 +288,13 @@ func (em *errorMonitor) checkQueueBlocks() {
 							subParams.IntervalOfSending,
 						),
 					}
-					if subParams.AlerterEmails != "" {
+					if subParams.AlerterEmails != ""  && em.alerterEmail != nil {
 						alert.Recipient = subParams.AlerterEmails
 						alert.TemplateName = "MessageSendingFailed.eml"
 						em.alerterEmail.Alert(alert)
 					}
 
-					if subParams.AlerterPhoneNumbers != "" {
+					if subParams.AlerterPhoneNumbers != "" && em.alerterSms != nil{
 						alert.Recipient = subParams.AlerterPhoneNumbers
 						alert.TemplateName = "MessageSendingFailed.sms"
 						em.alerterSms.Alert(alert)

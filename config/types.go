@@ -27,6 +27,7 @@ type Config struct {
 	//	User     string
 	//	Password string
 	//	DbName 	  string
+	//      MaxConn   int
 	Database map[string]interface{}
 
 	// Redis client settings.

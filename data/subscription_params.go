@@ -28,9 +28,6 @@ func GetSubscriptionParamsById(subscriptionId int32) (sub SubscriptionParams, er
 	if err != nil {
 		return
 	}
-	defer func(){
-		db.Release()
-	}()
 	sqlStr :=  fmt.Sprintf(`SELECT param_name FROM %s
 	WHERE subscription_id=?
 	`, DB_TABLE_SUBSCRIPTION_PARAMS)
@@ -38,6 +35,7 @@ func GetSubscriptionParamsById(subscriptionId int32) (sub SubscriptionParams, er
 	if err != nil {
 		return
 	}
+	defer rows.Close()
 	sub.SubscriptionId = subscriptionId
 	var paramNames []string
 	var rowV *sql.Row
@@ -49,14 +47,12 @@ func GetSubscriptionParamsById(subscriptionId int32) (sub SubscriptionParams, er
 		}
 		paramNames = append(paramNames, paramName)
 	}
+	var noParam interface{}
 	for _, paramName := range paramNames{
 		sqlStr :=  fmt.Sprintf(`SELECT param_value FROM %s
 	WHERE subscription_id=? AND param_name=?
 	`, DB_TABLE_SUBSCRIPTION_PARAMS)
-		rowV, err = db.QueryRow(sqlStr, subscriptionId, paramName)
-		if err != nil {
-			return
-		}
+		rowV = db.QueryRow(sqlStr, subscriptionId, paramName)
 		switch paramName {
 		case "Concurrency":
 			err = rowV.Scan(&sub.Concurrency)
@@ -74,6 +70,9 @@ func GetSubscriptionParamsById(subscriptionId int32) (sub SubscriptionParams, er
 			err = rowV.Scan(&sub.AlerterPhoneNumbers)
 		case "AlerterEnabled":
 			err = rowV.Scan(&sub.AlerterEnabled)
+		default:
+			// rowV必须被scan,避免row不能被关闭而占用连接。
+			rowV.Scan(&noParam)
 		}
 		if err != nil {
 			return

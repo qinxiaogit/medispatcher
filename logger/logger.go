@@ -21,7 +21,7 @@ var logAsSingleFile bool
 
 var loggersWRLock = make(chan int, 1)
 
-var validLevels = []string{"INFO", "ERROR", "WARN", "DEFAULT", "DATA"}
+var validLevels = []string{"INFO", "ERROR", "WARN", "DEFAULT", "DATA", "DEBUG"}
 
 // DatetimeLogFileWriter log messages into datetime named files.
 type DatetimeLogFileWriter struct {

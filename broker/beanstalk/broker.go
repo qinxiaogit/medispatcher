@@ -27,8 +27,10 @@ type longCmd struct {
 type Broker struct {
 	beanstalkc.Client
 	addr      string
+	// 任何一个命令都需调用lock
 	locker    *sync.Mutex
-	pubLocker *sync.Mutex
+	// 执行多条命令时独占的lock
+	transLocker *sync.Mutex
 	// watch, unwatch, use
 	// these will be needed when rebuild connection.
 	longCmdsHistory     []longCmd
@@ -60,7 +62,7 @@ func New(hostAddr string) (br *Broker, err error) {
 	}
 	br = &Broker{
 		locker:    new(sync.Mutex),
-		pubLocker: new(sync.Mutex),
+		transLocker: new(sync.Mutex),
 	}
 	br.Client = *client
 	br.addr = hostAddr
@@ -247,6 +249,14 @@ func (br *Broker) Delete(jobId uint64) (err error) {
 	defer br.unlock()
 	return br.Client.Delete(jobId)
 }
+
+
+func (br *Broker) KickJob(jobId uint64) (jerr error) {
+	br.lock()
+	defer br.unlock()
+	return br.Client.KickJob(jobId)
+}
+
 
 func (br *Broker) Reserve() (jobId uint64, jobData []byte, err error) {
 	br.lock()

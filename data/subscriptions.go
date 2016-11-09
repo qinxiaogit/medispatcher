@@ -38,7 +38,6 @@ func GetAllSubscriptionsFromDb() ([]SubscriptionRecord, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer db.Release()
 	rows, err := db.Query(sqlStr, SUBSCRIPTION_NORMAL)
 	if err != nil {
 		return nil, err
@@ -98,7 +97,6 @@ func GetSubscriptionsByTopicFromDb(topicName string) ([]SubscriptionRecord, erro
 	if err != nil {
 		return nil, err
 	}
-	defer db.Release()
 	rows, err := db.Query(sqlStr, topicName, SUBSCRIPTION_NORMAL)
 	if err != nil {
 		return nil, err
@@ -153,7 +151,6 @@ func GetSubscriptionById(subscriptionId int32) (sub SubscriptionRecord, err erro
 	if err != nil {
 		return
 	}
-	defer db.Release()
 	sqlStr := fmt.Sprintf(`
 	SELECT t2.class_key, t1.message_class_id,
 		t1.subscription_id, t1.subscriber_id,
@@ -164,10 +161,7 @@ func GetSubscriptionById(subscriptionId int32) (sub SubscriptionRecord, err erro
 	ON(t1.message_class_id=t2.class_id)
 	WHERE t1.subscription_id=?`,
 		DB_TABLE_SUBSCRIPTIONS, DB_TABLE_MESSAGE_CLASSES)
-	row, err = db.QueryRow(sqlStr, subscriptionId)
-	if err != nil {
-		return
-	}
+	row = db.QueryRow(sqlStr, subscriptionId)
 	err = row.Scan(&sub.Class_key, &sub.Message_class_id,
 		&sub.Subscription_id, &sub.Subscriber_id, &sub.Reception_channel,
 		&sub.Status, &sub.Subscribe_time, &sub.Timeout)
