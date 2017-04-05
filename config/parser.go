@@ -16,7 +16,7 @@ import (
 	toml "git.oschina.net/chaos.su/go-toml"
 )
 
-var flags = flag.NewFlagSet("medispatcher", flag.ContinueOnError)
+var flags = flag.NewFlagSet("medispatcher", flag.ExitOnError)
 
 func GetConfig() Config {
 	if config == nil {
@@ -77,9 +77,9 @@ func ParseConfig() (*Config, error) {
 		fb, err := ioutil.ReadFile(os.Args[0])
 		if err == nil {
 			filehash := fmt.Sprintf("%x", md5.Sum(fb))
-			fmt.Printf("medispatcher %v(%v)\r\n", VerNo, filehash)
+			fmt.Printf("medispatcher %v(%v) build with %s on %s \r\n", VerNo, filehash, runtime.Version(), strings.Replace(BuildTime, "_", " ", -1))
 		} else {
-			fmt.Printf("medispatcher %v\r\n", VerNo)
+			fmt.Printf("medispatcher %v with %s on build on %s\r\n", VerNo, runtime.Version(), strings.Replace(BuildTime, "_", " ", -1))
 		}
 	}
 

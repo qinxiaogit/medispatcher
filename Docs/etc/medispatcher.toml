@@ -6,6 +6,9 @@ LOG_DIR="/var/log/medispatcher"
 
 DATA_DIR="/var/lib/medispatcher/"
 
+# 是否切分日志。true,则按天切分,否则每种类型的日志都写到同一个文件,可利用外部工具来进行切分,如logrotate.
+SplitLog=true
+
 # 消息(接收)处理者环境。如果有设置，则根据消息处理地址的T_ENV标签（若发现带标签的地址）进行选择处理地址。
 # 如: "PUB","STAG"
 # RECEPTION_ENV="PUB"

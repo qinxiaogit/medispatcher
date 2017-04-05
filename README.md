@@ -65,6 +65,23 @@ First release of v2.
  e.g. medispatcher /path/to/config/file
 * Multiple message processing worker url support. The urls can be multi-lined, each line represents a separate worker url. This achieves a soft load balance.
  
+### 2.3.1
+2.3.1 released(refers to the git tag). 
+
+#### Features
+* Added help commandline args.
+* Added version display commandline args.
+
+
+### 2.3.2
+2.3.2 released(refers to the git tag). 
+
+#### Features
+* Log files can be configured to a single file.
+* Added build date  to version info.
+* Version info contains build time. 
+ 
+ 
 ## Milestone
 
 ### 2.1.0

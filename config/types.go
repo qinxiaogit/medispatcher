@@ -70,4 +70,7 @@ type Config struct {
 
 	// list name for storing messages which failed sent to queue server.
 	MsgQueueFaultToleranceListNamePrefix string
+
+	// 是否按天切分日志
+	SplitLog bool
 }

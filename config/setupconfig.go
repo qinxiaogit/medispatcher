@@ -11,8 +11,10 @@ import (
 	"time"
 )
 
+var BuildTime       = "unknonw"
+
 const (
-	VerNo           = "2.3.1"
+	VerNo           = "2.3.2"
 	MAX_CONNECTIONS = 15000
 	// 客户端响应超时
 	CLIENT_TIMEOUT  = time.Second * 5
@@ -41,6 +43,7 @@ var config = &Config{
 	MaxSendersPerRetryChannel:            uint32(10),
 	CoeOfIntervalForRetrySendingMsg:      uint16(10),
 	EnableMsgSentLog:                     true,
+	SplitLog:                             true,
 	MaxRetryTimesOfSendingMessage:        uint16(10),
 	MaxMessageProcessTime:                uint32(30000),
 	DefaultMaxMessageProcessTime:         uint32(5000),
