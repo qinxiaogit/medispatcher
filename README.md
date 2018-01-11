@@ -109,7 +109,14 @@ First release of v2.
 #### Fix
 * fixed un-handled buried messages on exits.
 * fixed service may not exits gracefully.
-  
+ 
+### 2.3.3
+2.3.3 released(refers to the git tag).    
+#### Enhancement 
+* stack will be logged when broker client encounter an error.
+#### Fix
+* fixed random subscription url will be used when no tagged env url are found. after this fixs, when tagged env has no subscription urls, the messages to the env will be dropped and issues a warning log. 
+ 
 ### 2.4.0
 #### Features
 

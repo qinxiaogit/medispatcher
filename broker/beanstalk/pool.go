@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"git.oschina.net/chaos.su/beanstalkc"
+	"runtime/debug"
 )
 
 type errCheck struct {
@@ -93,6 +94,7 @@ func (p *SafeBrokerkPool) getOneBrokerByAddr(queueServer string) *Broker {
 }
 
 func (p *SafeBrokerkPool) notifyBrokerErr(br *Broker, err error) {
+	logger.GetLogger("WARN").Printf("Client ERR: %v, TRACE: %v", err, string(debug.Stack()))
 	p.errCheckChan <- &errCheck{err, br}
 }
 

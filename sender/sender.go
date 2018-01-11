@@ -284,9 +284,12 @@ func sendSubscription(msgChan chan *Msg, sub data.SubscriptionRecord, sossr *Sta
 					}
 				}
 			}
-			if sentSuccess {
+			if sentSuccess || sendUrl == ""{
 				// TODO: performance test for deleting messages.
 				deleteMessage(msgR)
+				if sendUrl == "" {
+					logger.GetLogger("WARN").Print(err)
+				}
 			} else {
 				// logging failure.
 				if httpStatusCode == 0 {
@@ -435,8 +438,11 @@ func sendSubscriptionAsRetry(msgChan chan *Msg, sub data.SubscriptionRecord, sos
 			} else {
 				sentStatus = 0
 			}
-			// Delete it from the queue if success or exceeded the maximum retry times
-			if sentSuccess || msg.RetryTimes >= config.GetConfig().MaxRetryTimesOfSendingMessage {
+			// Delete it from the queue if success or exceeded the maximum retry times, or sendUrl is empty.
+			if sendUrl == "" || sentSuccess || msg.RetryTimes >= config.GetConfig().MaxRetryTimesOfSendingMessage {
+				if sendUrl == "" {
+					logger.GetLogger("WARN").Print(sendingErr)
+				}
 				//TODO: because of async command, this may be unsuccessful
 				deleteMessage(msgR)
 				err = data.SetFinalStatusOfFailureLog(msg.LogId, sentStatus, 0, msg.RetryTimes)
@@ -524,7 +530,7 @@ func transferSubscriptionViaHttp(msg *data.MessageStuct, sub *data.SubscriptionR
 	}
 	if len(taggedUrls) > 0 {
 		subUrls = taggedUrls
-	} else if len(nonTaggedUrls) > 0 {
+	} else {
 		subUrls = nonTaggedUrls
 	}
 	if len(subUrls) < 1 {
