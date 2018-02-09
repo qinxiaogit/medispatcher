@@ -102,3 +102,25 @@ User="task"
 Password="key"
 Recipient = "num"
 Content = "content"
+
+[AlarmPlatform]
+Gateway="http://alarm.pub.jumei.com/interface/rest/api/v1/gateway/auth"
+User="EventServer"
+Password="9f53dd96a497b6db58b271eb73210434"
+
+[AlarmPlatform.PostFieldsMap]
+User="appkey"
+Password="token"
+#告警item所属项目，可自定义.
+project=""
+#告警item所属主机， 不填写默认为空.
+#host=""
+#告警item的邮件主题，不填写默认为“聚美统一告警平台报警通知”.
+Subject="title"
+#告警item的内容.
+Content="content"
+#报警接收人.
+Recipient="auth"
+# 1邮件 2短信 3微信.
+#type="00000111"
+

@@ -77,6 +77,11 @@ func SetSubscriptionParams(subscriptionId int32, param SubscriptionParams) error
 	if err == nil {
 		err = routineStatus.SetSubParam("AlerterPhoneNumbers", param.AlerterPhoneNumbers)
 	}
+
+	if err == nil {
+		err = routineStatus.SetSubParam("AlerterReceiver", param.AlerterReceiver)
+	}
+	
 	if err == nil {
 		err = routineStatus.SetSubParam("AlerterEnabled", param.AlerterEnabled)
 	}

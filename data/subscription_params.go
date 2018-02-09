@@ -16,6 +16,7 @@ type SubscriptionParams struct {
 	ProcessTimeout      uint32
 	ReceptionUri        string
 	AlerterEmails       string
+	AlerterReceiver    string
 	AlerterPhoneNumbers string
 	AlerterEnabled      bool
 }
@@ -72,6 +73,8 @@ func GetSubscriptionParamsById(subscriptionId int32) (sub SubscriptionParams, er
 			err = rowV.Scan(&sub.AlerterEmails)
 		case "AlerterPhoneNumbers":
 			err = rowV.Scan(&sub.AlerterPhoneNumbers)
+		case "AlerterReceiver":
+			err = rowV.Scan(&sub.AlerterReceiver)
 		case "AlerterEnabled":
 			err = rowV.Scan(&sub.AlerterEnabled)
 		}

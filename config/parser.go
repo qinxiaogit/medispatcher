@@ -109,12 +109,14 @@ func ParseConfig() (*Config, error) {
 				}
 			case *toml.TomlTree:
 				switch key {
-				case "AlerterEmail", "AlerterSms":
+				case "AlerterEmail", "AlerterSms", "AlarmPlatform":
 					var alerterType string
 					if key == "AlerterEmail" {
 						alerterType = "Email"
-					} else {
+					} else if key == "AlerterSms" {
 						alerterType = "Sms"
+					} else {
+						alerterType = "AlarmPlatform"
 					}
 					cCfg := Alerter.Config{
 						ProxyType: alerterType,
