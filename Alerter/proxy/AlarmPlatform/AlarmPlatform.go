@@ -46,7 +46,8 @@ func (proxy *AlarmPlatform) IsValidPhoneNumber(phoneNum string) bool {
 
 func (proxy *AlarmPlatform) Send(alm Alerter.Alert) error {
     var sErr string
-    httpCode, resp, err := transproxy.Transfer(proxy.cfg.Gateway, proxy.packRequestData(&alm), time.Millisecond*DEFAULT_TRANSPORT_TIMEOUT)
+    httpCode, resp, err := transproxy.TransferJSON(proxy.cfg.Gateway, proxy.packRequestData(&alm), time.Millisecond*DEFAULT_TRANSPORT_TIMEOUT)
+    fmt.Println(httpCode, string(resp))
 
     if err != nil {
         sErr = "Failed to send alert  by email: "+err.Error()

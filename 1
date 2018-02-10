@@ -1,0 +1,416 @@
+diff --git a/Alerter/proxy/AlarmPlatform/AlarmPlatform.go b/Alerter/proxy/AlarmPlatform/AlarmPlatform.go
+new file mode 100644
+index 0000000..4f317f5
+--- /dev/null
++++ b/Alerter/proxy/AlarmPlatform/AlarmPlatform.go
+@@ -0,0 +1,109 @@
++package AlarmPlatform
++
++import (
++    "errors"
++    "medispatcher/Alerter"
++    transproxy "medispatcher/transproxy/http"
++    "regexp"
++    // "strings"
++    "time"
++    "fmt"
++)
++
++type AlarmPlatform struct {
++    cfg Alerter.Config
++}
++
++func (proxy *AlarmPlatform) Open() error {
++    return nil
++}
++
++func (proxy *AlarmPlatform) Close() error {
++    return nil
++}
++
++func (proxy *AlarmPlatform) Config(cfg Alerter.Config) error {
++    if !proxy.IsValidGateWay(cfg.Gateway){
++        return errors.New("Invalid gateway string")
++    }
++    proxy.cfg = cfg
++    return nil
++}
++
++func (proxy *AlarmPlatform) GetConfig()*Alerter.Config{
++    return  &proxy.cfg
++}
++
++func (proxy *AlarmPlatform) IsValidGateWay(gateway string) bool {
++    valid, _ := regexp.Match(`(?i)^https?://`, []byte(gateway))
++    return valid
++}
++
++func (proxy *AlarmPlatform) IsValidPhoneNumber(phoneNum string) bool {
++    valid, _ := regexp.Match(`^\+?\d{1,12}(-\d{1,6}){0,4}`, []byte(phoneNum))
++    return valid
++}
++
++func (proxy *AlarmPlatform) Send(alm Alerter.Alert) error {
++    var sErr string
++    httpCode, resp, err := transproxy.Transfer(proxy.cfg.Gateway, proxy.packRequestData(&alm), time.Millisecond*DEFAULT_TRANSPORT_TIMEOUT)
++
++    if err != nil {
++        sErr = "Failed to send alert  by email: "+err.Error()
++    } else if httpCode != 200 {
++        sErr = fmt.Sprintf("Failed to send alert  by email: gateway error: %v ", httpCode)
++    } else if proxy.cfg.AckStr != string(resp) {
++        sErr = "Gateway response '"+string(resp)+"' is not as exepected '"+proxy.cfg.AckStr+"'."
++    }
++
++    if sErr != "" {
++        return errors.New("Error ocurred: " + sErr)
++    }
++
++    return nil
++}
++
++func (proxy *AlarmPlatform) packRequestData(alm *Alerter.Alert) map[string]string {
++    data := map[string]string{}
++
++    if user, exists := proxy.cfg.PostFieldsMap["User"]; exists {
++        data[user] = proxy.cfg.User
++    }
++
++    if password, exists := proxy.cfg.PostFieldsMap["Password"]; exists {
++        data[password] = proxy.cfg.Password
++    }
++
++    if subject, exists := proxy.cfg.PostFieldsMap["Subject"]; exists {
++        data[subject] = alm.Subject
++    }
++
++    if content, exists := proxy.cfg.PostFieldsMap["Content"]; exists {
++        data[content] = alm.Content
++    }
++
++    if recipient, exists := proxy.cfg.PostFieldsMap["Recipient"]; exists {
++        data[recipient] = alm.Recipient
++    }
++
++    data["project"] = "EventServer"
++    if project, exists := proxy.cfg.PostFieldsMap["project"]; exists {
++        data["project"] = project
++    }
++
++    // 1邮件 2短信 3微信.
++    data["type"] = "00000111"
++    if receiver_channel, exists := proxy.cfg.PostFieldsMap["type"]; exists {
++        data["type"] = receiver_channel
++    }
++
++    return data
++}
++
++func (proxy *AlarmPlatform) New() Alerter.AlerterProxy {
++    return &AlarmPlatform{}
++}
++
++func init() {
++    Alerter.RegisterProxy("AlarmPlatform", &AlarmPlatform{})
++}
+diff --git a/Alerter/proxy/AlarmPlatform/def.go b/Alerter/proxy/AlarmPlatform/def.go
+new file mode 100644
+index 0000000..ef4f928
+--- /dev/null
++++ b/Alerter/proxy/AlarmPlatform/def.go
+@@ -0,0 +1,4 @@
++package AlarmPlatform
++
++// timeout is in milliseconds
++const DEFAULT_TRANSPORT_TIMEOUT = 5000
+\ No newline at end of file
+diff --git a/Docs/etc/medispatcher.toml b/Docs/etc/medispatcher.toml
+index 9dc62f5..0550384 100644
+--- a/Docs/etc/medispatcher.toml
++++ b/Docs/etc/medispatcher.toml
+@@ -102,3 +102,25 @@ User="task"
+ Password="key"
+ Recipient = "num"
+ Content = "content"
++
++[AlarmPlatform]
++Gateway="http://alarm.pub.jumei.com/interface/rest/api/v1/gateway/auth"
++User="EventServer"
++Password="9f53dd96a497b6db58b271eb73210434"
++
++[AlarmPlatform.PostFieldsMap]
++User="appkey"
++Password="token"
++#告警item所属项目，可自定义.
++project=""
++#告警item所属主机， 不填写默认为空.
++#host=""
++#告警item的邮件主题，不填写默认为“聚美统一告警平台报警通知”.
++Subject="title"
++#告警item的内容.
++Content="content"
++#报警接收人.
++Recipient="auth"
++# 1邮件 2短信 3微信.
++#type=""
++
+diff --git a/config/parser.go b/config/parser.go
+index aa54424..1d54597 100644
+--- a/config/parser.go
++++ b/config/parser.go
+@@ -109,13 +109,15 @@ func ParseConfig() (*Config, error) {
+ 				}
+ 			case *toml.TomlTree:
+ 				switch key {
+-				case "AlerterEmail", "AlerterSms":
++				// case "AlerterEmail", "AlerterSms":
++				case "AlarmPlatform":
+ 					var alerterType string
+-					if key == "AlerterEmail" {
+-						alerterType = "Email"
+-					} else {
+-						alerterType = "Sms"
+-					}
++					// if key == "AlerterEmail" {
++					// 	alerterType = "Email"
++					// } else {
++					// 	alerterType = "Sms"
++					// }
++					alerterType = "AlarmPlatform"
+ 					cCfg := Alerter.Config{
+ 						ProxyType: alerterType,
+ 					}
+diff --git a/config/types.go b/config/types.go
+index 383baef..7f47c12 100644
+--- a/config/types.go
++++ b/config/types.go
+@@ -39,8 +39,9 @@ type Config struct {
+ 	DAEMON_GID  int
+ 	ClientVer   string
+ 
+-	AlerterEmail Alerter.Config
+-	AlerterSms   Alerter.Config
++	// AlerterEmail Alerter.Config
++	// AlerterSms   Alerter.Config
++	AlarmPlatform Alerter.Config
+ 
+ 	ListenersOfMainQueue uint16
+ 
+diff --git a/data/subscription_params.go b/data/subscription_params.go
+index c145a01..965da73 100644
+--- a/data/subscription_params.go
++++ b/data/subscription_params.go
+@@ -15,8 +15,9 @@ type SubscriptionParams struct {
+ 	// ProcessTimeout is significant. Many checks relies on it, 0 means it has not a customized params, all params are in default value.
+ 	ProcessTimeout      uint32
+ 	ReceptionUri        string
+-	AlerterEmails       string
+-	AlerterPhoneNumbers string
++	// AlerterEmails       string
++	// AlerterPhoneNumbers string
++	AlerterReceiver string
+ 	AlerterEnabled      bool
+ }
+ 
+@@ -68,10 +69,12 @@ func GetSubscriptionParamsById(subscriptionId int32) (sub SubscriptionParams, er
+ 			err = rowV.Scan(&sub.ProcessTimeout)
+ 		case "ReceptionUri":
+ 			err = rowV.Scan(&sub.ReceptionUri)
+-		case "AlerterEmails":
+-			err = rowV.Scan(&sub.AlerterEmails)
+-		case "AlerterPhoneNumbers":
+-			err = rowV.Scan(&sub.AlerterPhoneNumbers)
++		// case "AlerterEmails":
++		// 	err = rowV.Scan(&sub.AlerterEmails)
++		// case "AlerterPhoneNumbers":
++		// 	err = rowV.Scan(&sub.AlerterPhoneNumbers)
++		case "AlerterReceiver":
++			err = rowV.Scan(&sub.AlerterReceiver)
+ 		case "AlerterEnabled":
+ 			err = rowV.Scan(&sub.AlerterEnabled)
+ 		}
+diff --git a/sender/error_monitor.go b/sender/error_monitor.go
+index 03967f9..e581eb9 100644
+--- a/sender/error_monitor.go
++++ b/sender/error_monitor.go
+@@ -5,6 +5,7 @@ import (
+ 	"medispatcher/Alerter"
+ 	_ "medispatcher/Alerter/proxy/Email"
+ 	_ "medispatcher/Alerter/proxy/Sms"
++	_ "medispatcher/Alerter/proxy/AlarmPlatform"
+ 	"medispatcher/broker"
+ 	"medispatcher/broker/beanstalk"
+ 	"medispatcher/config"
+@@ -33,8 +34,9 @@ type errorCheckPoints struct {
+ }
+ 
+ type errorMonitor struct {
+-	alerterEmail *Alerter.Alerter
+-	alerterSms   *Alerter.Alerter
++	// alerterEmail *Alerter.Alerter
++	// alerterSms   *Alerter.Alerter
++	alarmPlatform *Alerter.Alerter
+ 	// Subscription checkpoints lock
+ 	scLock *sync.Mutex
+ 	// Message checkpoints lock
+@@ -43,7 +45,7 @@ type errorMonitor struct {
+ }
+ 
+ func newErrorMonitor() *errorMonitor {
+-	alerterEmailCfg := config.GetConfig().AlerterEmail
++	/*alerterEmailCfg := config.GetConfig().AlerterEmail
+ 	alerterEmailCfg.Set("logger", logger.GetLogger("INFO"))
+ 	alerterSmsCfg := config.GetConfig().AlerterSms
+ 	alerterSmsCfg.Set("logger", logger.GetLogger("INFO"))
+@@ -54,10 +56,15 @@ func newErrorMonitor() *errorMonitor {
+ 	alerterSms, err := Alerter.New(alerterSmsCfg)
+ 	if err != nil {
+ 		logger.GetLogger("WARN").Printf("Failed to create Sms alerter: %v", err)
++	}*/
++	alarmPlatform, err := Alerter.New(config.GetConfig().AlarmPlatform)
++	if err != nil {
++		logger.GetLogger("WARN").Printf("Failed to create platform alerter: %v", err)
+ 	}
+ 	monitor := &errorMonitor{
+-		alerterEmail: alerterEmail,
+-		alerterSms:   alerterSms,
++		// alerterEmail: alerterEmail,
++		// alerterSms:   alerterSms,
++		alarmPlatform: alarmPlatform,
+ 		scLock:       &sync.Mutex{},
+ 		mcLock:       &sync.Mutex{},
+ 		checkPoints: errorCheckPoints{
+@@ -73,7 +80,10 @@ func (em *errorMonitor) start() {
+ }
+ 
+ func (em *errorMonitor) addSubscriptionCheck(sub *data.SubscriptionRecord, subParam SubscriptionParams) {
+-	if (em.alerterSms == nil || subParam.AlerterPhoneNumbers == "") && (em.alerterSms == nil || subParam.AlerterEmails == "") {
++	/*if (em.alerterSms == nil || subParam.AlerterPhoneNumbers == "") && (em.alerterSms == nil || subParam.AlerterEmails == "") {
++		return
++	}*/
++	if subParam.AlerterReceiver == "" {
+ 		return
+ 	}
+ 	em.scLock.Lock()
+@@ -126,7 +136,7 @@ func (em *errorMonitor) addSubscriptionCheck(sub *data.SubscriptionRecord, subPa
+ 			sub.Subscription_id, sub.Reception_channel,
+ 		),
+ 	}
+-	if em.alerterEmail != nil && subParam.AlerterEmails != "" {
++	/*if em.alerterEmail != nil && subParam.AlerterEmails != "" {
+ 		alert.Recipient = subParam.AlerterEmails
+ 		alert.TemplateName = "MessageSendingFailed.eml"
+ 		em.alerterEmail.Alert(alert)
+@@ -136,14 +146,20 @@ func (em *errorMonitor) addSubscriptionCheck(sub *data.SubscriptionRecord, subPa
+ 		alert.Recipient = subParam.AlerterPhoneNumbers
+ 		alert.TemplateName = "MessageSendingFailed.sms"
+ 		em.alerterSms.Alert(alert)
+-	}
++	}*/
++
++	alert.Recipient = subParam.AlerterReceiver
++	em.alarmPlatform.Alert(alert)
+ }
+ 
+ func (em *errorMonitor) addMessageCheck(sub *data.SubscriptionRecord, subParam SubscriptionParams, logId uint64, lastErrorString string, errorTimes uint16) {
+ 	if errorTimes < MESSAGE_FAILURE_ALERT_THRESHOLD {
+ 		return
+ 	}
+-	if (em.alerterSms == nil || subParam.AlerterPhoneNumbers == "") && (em.alerterSms == nil || subParam.AlerterEmails == "") {
++	/*if (em.alerterSms == nil || subParam.AlerterPhoneNumbers == "") && (em.alerterSms == nil || subParam.AlerterEmails == "") {
++		return
++	}*/
++	if subParam.AlerterReceiver == "" {
+ 		return
+ 	}
+ 	em.mcLock.Lock()
+@@ -195,17 +211,19 @@ func (em *errorMonitor) addMessageCheck(sub *data.SubscriptionRecord, subParam S
+ 		Subject: "消息中心警报",
+ 	}
+ 	alert.Content = emailMsg
+-	if em.alerterEmail != nil && subParam.AlerterEmails != "" {
++	/*if em.alerterEmail != nil && subParam.AlerterEmails != "" {
+ 		alert.Recipient = subParam.AlerterEmails
+ 		alert.TemplateName = "MessageSendingFailed.eml"
+ 		em.alerterEmail.Alert(alert)
+-	}
++	}*/
+ 	alert.Content = smsMsg
+-	if em.alerterSms != nil && subParam.AlerterPhoneNumbers != "" {
++	/*if em.alerterSms != nil && subParam.AlerterPhoneNumbers != "" {
+ 		alert.Recipient = subParam.AlerterPhoneNumbers
+ 		alert.TemplateName = "MessageSendingFailed.sms"
+ 		em.alerterSms.Alert(alert)
+-	}
++	}*/
++	alert.Recipient = subParam.AlerterReceiver
++	em.alarmPlatform.Alert(alert)
+ }
+ 
+ // Check queued message blocks every 5 seconds.
+@@ -215,8 +233,11 @@ func (em *errorMonitor) checkQueueBlocks() {
+ 		stats, reQueueStats      map[string]map[string]interface{}
+ 		errOfQueue, errOfReQueue error
+ 	)
+-	if em.alerterEmail == nil && em.alerterSms == nil {
++	/*if em.alerterEmail == nil && em.alerterSms == nil {
+ 		return
++	}*/
++	if em.alarmPlatform == nil {
++		return;
+ 	}
+ 	brPool = broker.GetBrokerPoolWithBlock(1, 3, shouldExit)
+ 	if brPool == nil {
+@@ -237,7 +258,10 @@ func (em *errorMonitor) checkQueueBlocks() {
+ 					logger.GetLogger("WARN").Printf("Failed to load subscription[%v] params: %v", sub.Subscription_id, err)
+ 					continue
+ 				}
+-				if !subParams.AlerterEnabled || (subParams.AlerterEmails == "" && subParams.AlerterPhoneNumbers == "") {
++				/*if !subParams.AlerterEnabled || (subParams.AlerterEmails == "" && subParams.AlerterPhoneNumbers == "") {
++					continue
++				}*/
++				if ! subParams.AlerterEnabled || subParams.AlerterReceiver == "" {
+ 					continue
+ 				}
+ 				lastAlertTime, exists := alertStatistics[sub.Subscription_id]
+@@ -288,7 +312,7 @@ func (em *errorMonitor) checkQueueBlocks() {
+ 							subParams.IntervalOfSending,
+ 						),
+ 					}
+-					if subParams.AlerterEmails != "" {
++					/*if subParams.AlerterEmails != "" {
+ 						alert.Recipient = subParams.AlerterEmails
+ 						alert.TemplateName = "MessageSendingFailed.eml"
+ 						em.alerterEmail.Alert(alert)
+@@ -298,7 +322,9 @@ func (em *errorMonitor) checkQueueBlocks() {
+ 						alert.Recipient = subParams.AlerterPhoneNumbers
+ 						alert.TemplateName = "MessageSendingFailed.sms"
+ 						em.alerterSms.Alert(alert)
+-					}
++					}*/
++					alert.Recipient = subParams.AlerterReceiver
++					em.alarmPlatform.Alert(alert)
+ 					alertStatistics[sub.Subscription_id] = currentTime
+ 				}
+ 			}
+diff --git a/sender/funcs.go b/sender/funcs.go
+index 2ea6fed..7b4da62 100644
+--- a/sender/funcs.go
++++ b/sender/funcs.go
+@@ -70,12 +70,15 @@ func SetSubscriptionParams(subscriptionId int32, param SubscriptionParams) error
+ 		err = routineStatus.SetSubParam("ReceptionUri", param.ReceptionUri)
+ 	}
+ 
+-	if err == nil {
++	/*if err == nil {
+ 		err = routineStatus.SetSubParam("AlerterEmails", param.AlerterEmails)
+ 	}
+ 
+ 	if err == nil {
+ 		err = routineStatus.SetSubParam("AlerterPhoneNumbers", param.AlerterPhoneNumbers)
++	}*/
++	if err == nil {
++		err = routineStatus.SetSubParam("AlerterReceiver", param.AlerterReceiver)
+ 	}
+ 	if err == nil {
+ 		err = routineStatus.SetSubParam("AlerterEnabled", param.AlerterEnabled)
