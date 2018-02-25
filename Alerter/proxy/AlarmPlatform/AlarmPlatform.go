@@ -8,6 +8,7 @@ import (
     // "strings"
     "time"
     "fmt"
+    "strings"
 )
 
 type AlarmPlatform struct {
@@ -45,20 +46,31 @@ func (proxy *AlarmPlatform) IsValidPhoneNumber(phoneNum string) bool {
 }
 
 func (proxy *AlarmPlatform) Send(alm Alerter.Alert) error {
-    var sErr string
-    httpCode, resp, err := transproxy.TransferJSON(proxy.cfg.Gateway, proxy.packRequestData(&alm), time.Millisecond*DEFAULT_TRANSPORT_TIMEOUT)
-    fmt.Println(httpCode, string(resp))
+    var sErr []string = []string{}
+    receivers := strings.Split(alm.Recipient, ",")
 
-    if err != nil {
-        sErr = "Failed to send alert  by email: "+err.Error()
-    } else if httpCode != 200 {
-        sErr = fmt.Sprintf("Failed to send alert  by email: gateway error: %v ", httpCode)
-    } else if proxy.cfg.AckStr != string(resp) {
-        sErr = "Gateway response '"+string(resp)+"' is not as exepected '"+proxy.cfg.AckStr+"'."
+    for _, receiver := range receivers {
+        receiver = strings.TrimSpace(receiver)
+        if receiver == "" {
+            continue
+        }
+
+        alm.Recipient = receiver
+
+        httpCode, resp, err := transproxy.TransferJSON(proxy.cfg.Gateway, proxy.packRequestData(&alm), time.Millisecond*DEFAULT_TRANSPORT_TIMEOUT)
+        fmt.Println(httpCode, string(resp))
+
+        if err != nil {
+            sErr = append(sErr, "Failed to send alert  by email: "+err.Error())
+        } else if httpCode != 200 {
+            sErr = append(sErr, fmt.Sprintf("Failed to send alert  by email: gateway error: %v ", httpCode))
+        } else if proxy.cfg.AckStr != string(resp) {
+            sErr = append(sErr, "Gateway response '"+string(resp)+"' is not as exepected '"+proxy.cfg.AckStr+"'.")
+        }
     }
 
-    if sErr != "" {
-        return errors.New("Error ocurred: " + sErr)
+    if len(sErr) > 0 {
+        return errors.New("Error ocurred: " + strings.Join(sErr, ";"))
     }
 
     return nil
