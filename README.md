@@ -97,3 +97,8 @@ First release of v2.
 #### Features
 
 * Messages sent/received statistics
+
+### 2.4.0
+#### Features
+
+* 接入统一告警平台.

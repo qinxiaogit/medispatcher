@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	VerNo           = "2.3.1"
+	VerNo           = "2.4.1"
 	MAX_CONNECTIONS = 15000
 	// 客户端响应超时
 	CLIENT_TIMEOUT  = time.Second * 5
