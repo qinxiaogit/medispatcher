@@ -5,6 +5,7 @@ import (
 	"medispatcher/Alerter"
 	_ "medispatcher/Alerter/proxy/Email"
 	_ "medispatcher/Alerter/proxy/Sms"
+	_ "medispatcher/Alerter/proxy/AlarmPlatform"
 	"medispatcher/broker"
 	"medispatcher/broker/beanstalk"
 	"medispatcher/config"
@@ -35,6 +36,7 @@ type errorCheckPoints struct {
 type errorMonitor struct {
 	alerterEmail *Alerter.Alerter
 	alerterSms   *Alerter.Alerter
+	alarmPlatform *Alerter.Alerter
 	// Subscription checkpoints lock
 	scLock *sync.Mutex
 	// Message checkpoints lock
@@ -55,9 +57,14 @@ func newErrorMonitor() *errorMonitor {
 	if err != nil {
 		logger.GetLogger("WARN").Printf("Failed to create Sms alerter: %v", err)
 	}
+	alarmPlatform, err := Alerter.New(config.GetConfig().AlarmPlatform)
+	if err != nil {
+		logger.GetLogger("WARN").Printf("Failed to create platform alerter: %v", err)
+	}
 	monitor := &errorMonitor{
 		alerterEmail: alerterEmail,
 		alerterSms:   alerterSms,
+		alarmPlatform: alarmPlatform,
 		scLock:       &sync.Mutex{},
 		mcLock:       &sync.Mutex{},
 		checkPoints: errorCheckPoints{
@@ -73,7 +80,7 @@ func (em *errorMonitor) start() {
 }
 
 func (em *errorMonitor) addSubscriptionCheck(sub *data.SubscriptionRecord, subParam SubscriptionParams) {
-	if (em.alerterSms == nil || subParam.AlerterPhoneNumbers == "") && (em.alerterSms == nil || subParam.AlerterEmails == "") {
+	if (em.alerterSms == nil || subParam.AlerterPhoneNumbers == "") && (em.alerterSms == nil || subParam.AlerterEmails == "") && (em.alarmPlatform == nil || subParam.AlerterReceiver == "") {
 		return
 	}
 	em.scLock.Lock()
@@ -137,13 +144,18 @@ func (em *errorMonitor) addSubscriptionCheck(sub *data.SubscriptionRecord, subPa
 		alert.TemplateName = "MessageSendingFailed.sms"
 		em.alerterSms.Alert(alert)
 	}
+
+	if em.alarmPlatform != nil && subParam.AlerterReceiver != "" {
+		alert.Recipient = subParam.AlerterReceiver
+		em.alarmPlatform.Alert(alert)
+	}
 }
 
 func (em *errorMonitor) addMessageCheck(sub *data.SubscriptionRecord, subParam SubscriptionParams, logId uint64, lastErrorString string, errorTimes uint16) {
 	if errorTimes < MESSAGE_FAILURE_ALERT_THRESHOLD {
 		return
 	}
-	if (em.alerterSms == nil || subParam.AlerterPhoneNumbers == "") && (em.alerterSms == nil || subParam.AlerterEmails == "") {
+	if (em.alerterSms == nil || subParam.AlerterPhoneNumbers == "") && (em.alerterSms == nil || subParam.AlerterEmails == "") && (em.alarmPlatform == nil || subParam.AlerterReceiver == "") {
 		return
 	}
 	em.mcLock.Lock()
@@ -206,6 +218,12 @@ func (em *errorMonitor) addMessageCheck(sub *data.SubscriptionRecord, subParam S
 		alert.TemplateName = "MessageSendingFailed.sms"
 		em.alerterSms.Alert(alert)
 	}
+
+	if em.alarmPlatform != nil && subParam.AlerterReceiver != "" {
+		alert.Content = smsMsg
+		alert.Recipient = subParam.AlerterReceiver
+		em.alarmPlatform.Alert(alert)
+	}
 }
 
 // Check queued message blocks every 5 seconds.
@@ -237,7 +255,7 @@ func (em *errorMonitor) checkQueueBlocks() {
 					logger.GetLogger("WARN").Printf("Failed to load subscription[%v] params: %v", sub.Subscription_id, err)
 					continue
 				}
-				if !subParams.AlerterEnabled || (subParams.AlerterEmails == "" && subParams.AlerterPhoneNumbers == "") {
+				if !subParams.AlerterEnabled || (subParams.AlerterEmails == "" && subParams.AlerterPhoneNumbers == "" && subParams.AlerterReceiver == "") {
 					continue
 				}
 				lastAlertTime, exists := alertStatistics[sub.Subscription_id]
@@ -299,6 +317,11 @@ func (em *errorMonitor) checkQueueBlocks() {
 						alert.TemplateName = "MessageSendingFailed.sms"
 						em.alerterSms.Alert(alert)
 					}
+
+					if (subParams.AlerterReceiver != "") {
+						alert.Recipient = subParams.AlerterReceiver
+	                    em.alarmPlatform.Alert(alert)
+	                }
 					alertStatistics[sub.Subscription_id] = currentTime
 				}
 			}

@@ -42,6 +42,7 @@ type Config struct {
 
 	AlerterEmail Alerter.Config
 	AlerterSms   Alerter.Config
+	AlarmPlatform Alerter.Config
 
 	ListenersOfMainQueue uint16
 
