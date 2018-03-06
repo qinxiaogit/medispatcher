@@ -166,7 +166,7 @@ func (em *errorMonitor) addSubscriptionCheck(sub *data.SubscriptionRecord, subPa
 
 	if em.alarmPlatform != nil && ! sentAlarm && config.GetConfig().DefaultAlarmReceiver != "" && config.GetConfig().DefaultAlarmChan != "" {
 		alert.Subject = "消息中心警报(统一告警:未设置报警接收人)"
-		alert.Content = fmt.Sprintf("***警告:订阅(ID=\"%v\")未设置报警接收人;***\r\n%s", sub.Subscriber_id, alert.Content)
+		alert.Content = fmt.Sprintf("***警告:订阅(ID=\"%v\")未设置报警接收人;***\r\n%s", sub.Subscription_id, alert.Content)
 		alert.Recipient = config.GetConfig().DefaultAlarmReceiver
 		alert.AlarmReceiveChan = config.GetConfig().DefaultAlarmChan
 		alert.TemplateName = "MessageSendingFailed.sms"
@@ -263,7 +263,7 @@ func (em *errorMonitor) addMessageCheck(sub *data.SubscriptionRecord, subParam S
 
 	if em.alarmPlatform != nil && ! sentAlarm && config.GetConfig().DefaultAlarmReceiver != "" && config.GetConfig().DefaultAlarmChan != "" {
 		alert.Subject = "消息中心警报(统一告警:未设置报警接收人)"
-		alert.Content = fmt.Sprintf("***警告:订阅(ID=\"%v\")未设置报警接收人;***\r\n%s", sub.Subscriber_id, alert.Content)
+		alert.Content = fmt.Sprintf("***警告:订阅(ID=\"%v\")未设置报警接收人;***\r\n%s", sub.Subscription_id, alert.Content)
 		alert.Recipient = config.GetConfig().DefaultAlarmReceiver
 		alert.AlarmReceiveChan = config.GetConfig().DefaultAlarmChan
 		alert.TemplateName = "MessageSendingFailed.sms"
