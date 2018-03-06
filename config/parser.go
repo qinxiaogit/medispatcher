@@ -25,6 +25,13 @@ func GetConfig() Config {
 	return *config
 }
 
+func GetConfigPointer() *Config {
+	if config == nil {
+		panic("config not intialized, you should call config.Setup() first!")
+	}
+	return config
+}
+
 func GetFlags() *flag.FlagSet {
 	return flags
 }

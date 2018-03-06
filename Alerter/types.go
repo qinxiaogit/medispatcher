@@ -88,6 +88,7 @@ type Alert struct {
 	Content      string
 	Recipient    string
 	TemplateName string
+	AlarmReceiveChan string
 }
 
 type AlerterProxy interface {

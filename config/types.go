@@ -74,4 +74,9 @@ type Config struct {
 
 	// 是否按天切分日志
 	SplitLog bool
+
+	// 默认报警接收人(针对没有配置报警的订阅).
+	DefaultAlarmReceiver string
+	// 默认报警通道(短信,邮件,微信).
+	DefaultAlarmChan string
 }

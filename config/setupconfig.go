@@ -74,6 +74,20 @@ func Setup() error {
 		return errors.New(fmt.Sprintf("Failed to initialize configs: %s ", err))
 	}
 
+	// 加载缺省报警设置.
+	result, err := GetConfigFromDisk("default_alarm")
+	if err == nil {
+		if v, ok := result.(map[string]interface{}); ok {
+			if _, exists := v["DefaultAlarmReceiver"]; exists {
+				config.DefaultAlarmReceiver = v["DefaultAlarmReceiver"].(string)
+			}
+
+			if _, exists := v["DefaultAlarmChan"]; exists {
+				config.DefaultAlarmChan = v["DefaultAlarmChan"].(string)
+			}
+		}
+	}
+
 	var daemonUid, daemonGid int
 	if config.DAEMON_USER == "" {
 		daemonGid = os.Getegid()

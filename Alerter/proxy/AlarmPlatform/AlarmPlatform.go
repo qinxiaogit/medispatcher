@@ -105,9 +105,13 @@ func (proxy *AlarmPlatform) packRequestData(alm *Alerter.Alert) map[string]strin
     }
 
     // 1邮件 2短信 3微信.
-    data["type"] = "00000111"
-    if receiver_channel, exists := proxy.cfg.PostFieldsMap["type"]; exists {
-        data["type"] = receiver_channel
+    if alm.AlarmReceiveChan != "" {
+        data["type"] = alm.AlarmReceiveChan
+    } else {
+        data["type"] = "00000111"
+        if receiver_channel, exists := proxy.cfg.PostFieldsMap["type"]; exists {
+            data["type"] = receiver_channel
+        }
     }
 
     return data
