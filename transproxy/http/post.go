@@ -137,7 +137,7 @@ func TransferJSON(addr string, data map[string]string, timeout time.Duration) (h
 
 // Transfer acts a http post request.
 // TODO: keep-alive on connection pool
-func Transfer(addr string, data map[string]string, timeout time.Duration) (httpStatusCode int, respData []byte, err error) {
+func Transfer(addr string, data map[string]string, headers map[string]string, timeout time.Duration) (httpStatusCode int, respData []byte, err error) {
 	reqData := url.Values{}
 	for k, v := range data {
 		reqData[k] = []string{v}
@@ -156,6 +156,15 @@ func Transfer(addr string, data map[string]string, timeout time.Duration) (httpS
 	req.Header.Set("User-Agent", "MEDipatcher/2.0.0-alpha")
 	req.Header.Set("Accept", "*/*")
 	req.Header.Set("Accept-Encoding", "gzip")
+
+	if _, ok := headers["context"]; ok {
+		req.Header.Set("X-Jumei-Context", headers["context"])
+	}
+
+	if _, ok := headers["owl_context"]; ok {
+		req.Header.Set("X-Jumei-Owl-Context", headers["owl_context"])
+	}
+
 	//req.Header.Set("Connection", "close")
 //	req.Header.Set("Keep-Alive", "300")
 	resp, err := client.Do(req)

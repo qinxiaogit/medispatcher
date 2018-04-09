@@ -54,7 +54,7 @@ func (proxy *Email) Send(alm Alerter.Alert) error {
 			continue
 		}
 		alm.Recipient = recipient
-		httpCode, resp, err := transproxy.Transfer(proxy.cfg.Gateway, proxy.packRequestData(&alm), time.Millisecond*DEFAULT_TRANSPORT_TIMEOUT)
+		httpCode, resp, err := transproxy.Transfer(proxy.cfg.Gateway, proxy.packRequestData(&alm), nil, time.Millisecond*DEFAULT_TRANSPORT_TIMEOUT)
 
 		if err != nil {
 			sErr = append(sErr, "Failed to send alert  by email: "+err.Error())

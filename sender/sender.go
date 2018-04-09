@@ -559,7 +559,18 @@ func transferSubscriptionViaHttp(msg *data.MessageStuct, sub *data.SubscriptionR
 		return
 	}
 	postFields["message"] = string(msgBody)
-	httpStatusCode, returnData, err = httproxy.Transfer(subUrl.String(), postFields, time.Millisecond*time.Duration((*sub).Timeout))
+
+	// 上下文传递.
+	var headers map[string]string = map[string]string{}
+	if msg.Context != "" {
+		headers["context"] = msg.Context
+	}
+
+	if msg.Owl_context != "" {
+		headers["owl_context"] = msg.Owl_context
+	}
+
+	httpStatusCode, returnData, err = httproxy.Transfer(subUrl.String(), postFields, headers, time.Millisecond*time.Duration((*sub).Timeout))
 	return subUrl.String(), httpStatusCode, returnData, err
 }
 

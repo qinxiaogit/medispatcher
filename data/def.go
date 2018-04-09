@@ -46,4 +46,7 @@ type MessageStuct struct {
 	LogId    uint64
 	Delay    uint64
 	Priority uint32
+
+	Context string
+	Owl_context string
 }
