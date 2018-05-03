@@ -37,7 +37,7 @@ func TestSetSubscriptionParams(t *testing.T) {
 		var re interface{}
 		re, err = c.Call("SetSubscriptionParams", map[string]interface{}{
 			"SubscriptionId": 352,
-			"Params":         map[string]interface{}{"Concurrency": 11,  "ConcurrencyOfRetry": 1, "IntervalOfSending": 92, "ProcessTimeout": 100},
+			"Params":         map[string]interface{}{"Concurrency": 11, "ConcurrencyOfRetry": 1, "IntervalOfSending": 92, "ProcessTimeout": 100},
 		})
 		t.Log(re)
 	}
@@ -64,7 +64,7 @@ func TestGetSubscriptionParams(t *testing.T) {
 	}
 }
 
-func TestGetDefaultSubscriptionSettings(t *testing.T){
+func TestGetDefaultSubscriptionSettings(t *testing.T) {
 	var err error
 	c, err := rpclient.New(config.GetConfig().ListenAddr)
 	if err == nil {

@@ -10,7 +10,9 @@ import (
 	"medispatcher/config"
 	"medispatcher/data"
 	"medispatcher/logger"
+	"medispatcher/pushstatistics"
 	httproxy "medispatcher/transproxy/http"
+	"net/http"
 	"net/url"
 	"regexp"
 	"runtime/debug"
@@ -545,6 +547,15 @@ func transferSubscriptionViaHttp(msg *data.MessageStuct, sub *data.SubscriptionR
 		err = fmt.Errorf("Failed to encode msg body: %v", err)
 		return
 	}
+
+	// TODO 统计发送情况
+	defer func() {
+		if httpStatusCode == http.StatusOK {
+			//发送成功
+			pushstatistics.Add(sub, 1)
+		}
+	}()
+
 	postFields["message"] = string(msgBody)
 	httpStatusCode, returnData, err = httproxy.Transfer(subUrl.String(), postFields, time.Millisecond*time.Duration((*sub).Timeout))
 	return subUrl.String(), httpStatusCode, returnData, err

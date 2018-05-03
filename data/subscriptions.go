@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"medispatcher/data/cache"
+	"strconv"
 )
 
 type SubscriptionRecord struct {
@@ -15,6 +16,22 @@ type SubscriptionRecord struct {
 	Status            int8
 	Subscribe_time    uint
 	Timeout           uint32
+}
+
+// GetTopic will 返回mq的topic
+func (s *SubscriptionRecord) GetTopic() string {
+	if s != nil {
+		return s.Class_key
+	}
+	return ""
+}
+
+// GetChannel will 返回mq的channel
+func (s *SubscriptionRecord) GetChannel() string {
+	if s != nil {
+		return strconv.Itoa(int(s.Subscription_id))
+	}
+	return ""
 }
 
 func getSubscriptionsCacheKey(topicName string) string {
