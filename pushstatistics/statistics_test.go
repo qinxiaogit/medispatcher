@@ -85,7 +85,7 @@ func TestAdd(t *testing.T) {
 			}
 			So(sumD, ShouldEqual, testCount)
 			So(sumH, ShouldEqual, testCount)
-			So(sumM, ShouldNotEqual, testCount)
+			So(sumM, ShouldBeLessThanOrEqualTo, testCount)
 
 			// out, _ := json.MarshalIndent(data, "", "  ")
 			// fmt.Println("\n\n\n", string(out))

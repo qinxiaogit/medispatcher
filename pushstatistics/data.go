@@ -4,9 +4,8 @@ import "sync"
 
 // Categorys define 统计值
 type Categorys struct {
-	V     []int `json:"-"`
-	Index uint  `json:"-"`
-	Len   uint  `json:"-"`
+	V   []int `json:"-"`
+	Len uint  `json:"-"`
 
 	Second int `json:"second"`
 	Minute int `json:"minute"`
@@ -16,40 +15,41 @@ type Categorys struct {
 
 func newValue(length uint) *Categorys {
 	return &Categorys{
-		V:     make([]int, length),
-		Len:   length,
-		Index: 0,
+		V:   make([]int, length),
+		Len: length,
 	}
 }
 
-// Tick will 到下一秒
-func (c *Categorys) Tick() {
-	c.Index++
-	c.Index %= c.Len
+// TickAt will 到下一秒
+func (c *Categorys) TickAt(lastIndex, curIndex uint) {
+	minute := (lastIndex + c.Len - 60) % c.Len
+	hour := (lastIndex + c.Len - 3600) % c.Len
+	day := (lastIndex + c.Len - 86400) % c.Len
 
-	minute := (c.Index + c.Len - 60) % c.Len
-	hour := (c.Index + c.Len - 3600) % c.Len
-	day := (c.Index + c.Len - 86400) % c.Len
-
-	c.V[c.Index] = 0
 	c.Second = 0
 	c.Minute -= c.V[minute]
 	c.Hour -= c.V[hour]
 	c.Day -= c.V[day]
+
+	c.V[curIndex] = 0
+	return
 }
 
-// Add 添加
-func (c *Categorys) Add(count int) {
-	c.V[c.Index]++
-	c.Second++
-	c.Minute++
-	c.Hour++
-	c.Day++
+// AddAt 在index位置添加count
+func (c *Categorys) AddAt(index uint, count int) {
+	c.V[index] += count
+
+	c.Second += count
+	c.Minute += count
+	c.Hour += count
+	c.Day += count
 }
 
 // Statistics define 统计数据
 type Statistics struct {
 	sync.RWMutex
+	Index uint
+	Len   uint
 	// Data
 	// [topic][channel]Categorys
 	Data map[string]map[string]*Categorys
@@ -63,21 +63,28 @@ func (s *Statistics) channel(topic, c string) *Categorys {
 	}
 
 	if _, ok := s.Data[topic][c]; !ok {
-		v := newValue(24 * 3600)
+		v := newValue(s.Len)
 		s.Data[topic][c] = v
 	}
 	return s.Data[topic][c]
 }
 
 // Tick will 移动所有的topic下的所有channel的游标
-func (s *Statistics) Tick() {
+func (s *Statistics) Tick() (lastIndex uint) {
 	s.Lock()
 	defer s.Unlock()
-	for _, topic := range s.Data {
-		for _, channel := range topic {
-			channel.Tick()
+
+	lastIndex = s.Index
+	s.Index++
+	s.Index %= s.Len
+
+	for _, topics := range s.Data {
+		for _, channels := range topics {
+			channels.TickAt(lastIndex, s.Index)
 		}
 	}
+
+	return
 }
 
 // Show will 返回统计数据

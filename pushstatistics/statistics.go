@@ -1,6 +1,7 @@
 package pushstatistics
 
 import (
+	"container/list"
 	"sync"
 	"time"
 )
@@ -15,6 +16,7 @@ func init() {
 	initCurData.Do(func() {
 		poolData = NewMQList()
 		statistics = &Statistics{
+			Len:  86400, // 1day
 			Data: map[string]map[string]*Categorys{},
 		}
 		go run()
@@ -39,16 +41,19 @@ func run() {
 	for {
 		select {
 		case <-t.C:
-			statistics.Tick()
-			data := poolData.GetAllData()
+			last := statistics.Tick()
+			data := poolData.pop()
 			if data.Len() > 0 {
-				go func() {
-					for item := data.Front(); item != nil; item = item.Next() {
+				go func(at uint, source *list.List) {
+					if source == nil {
+						return
+					}
+					for item := source.Front(); item != nil; item = item.Next() {
 						v := item.Value.(MessageQueue)
 						ctg := statistics.channel(v.GetTopic(), v.GetChannel())
-						ctg.Add(1)
+						ctg.AddAt(at, 1)
 					}
-				}()
+				}(last, data)
 			}
 		}
 	}

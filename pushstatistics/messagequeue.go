@@ -30,8 +30,8 @@ func (m *MQList) push(mq MessageQueue) {
 	m.Data.PushBack(mq)
 }
 
-// GetAllData will 获取所有推送数据
-func (m *MQList) GetAllData() *list.List {
+// pop will 获取所有推送数据
+func (m *MQList) pop() *list.List {
 	m.Lock()
 	defer m.Unlock()
 	tmp := m.Data
