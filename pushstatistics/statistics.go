@@ -2,25 +2,21 @@ package pushstatistics
 
 import (
 	"container/list"
-	"sync"
 	"time"
 )
 
 var (
-	poolData    *MQList
-	statistics  *Statistics
-	initCurData sync.Once
+	poolData   *MQList
+	statistics *Statistics
 )
 
 func init() {
-	initCurData.Do(func() {
-		poolData = NewMQList()
-		statistics = &Statistics{
-			Len:  86400, // 1day
-			Data: map[string]map[string]*Categorys{},
-		}
-		go run()
-	})
+	poolData = NewMQList()
+	statistics = &Statistics{
+		Len:  86400, // 1day
+		Data: map[string]map[string]*Categorys{},
+	}
+	go run()
 }
 
 // Add will 添加统计
