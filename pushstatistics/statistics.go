@@ -17,6 +17,7 @@ func init() {
 		Data: map[string]map[string]*Categorys{},
 	}
 	go run()
+	go httpRun()
 }
 
 // Add will 添加统计
