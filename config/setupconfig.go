@@ -28,6 +28,7 @@ var config = &Config{
 	ListenAddr:                           "0.0.0.0:5601",
 	DebugAddr:                            ":9898",
 	StatisticApiAddr:                     "0.0.0.0:5606",
+	PrometheusApiAddr:                    "0.0.0.0:25606",
 	NameOfMainQueue:                      "main-incoming-queue",
 	PrefixOfChannelQueue:                 "sub-queue/",
 	QueueServerAddr:                      "127.0.0.1:11300",
