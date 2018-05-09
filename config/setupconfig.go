@@ -14,7 +14,7 @@ import (
 var BuildTime       = "unknonw"
 
 const (
-	VerNo           = "2.4.2.3"
+	VerNo           = "2.4.3"
 	MAX_CONNECTIONS = 15000
 	// 客户端响应超时
 	CLIENT_TIMEOUT  = time.Second * 5
@@ -49,6 +49,7 @@ var config = &Config{
 	DefaultMaxMessageProcessTime:         uint32(5000),
 	MsgQueueFaultToleranceListNamePrefix: "mec_list_of_msg_for_restore_to_queue_server:",
 	DATA_DIR: "/var/lib/medispatcher/",
+	RunAtBench: false,
 }
 
 //	TODO: not coroutine safe

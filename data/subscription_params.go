@@ -17,6 +17,8 @@ type SubscriptionParams struct {
 	ReceptionUri        string
 	AlerterEmails       string
 	AlerterReceiver    string
+	// 是否接收压测环境消息.
+	ReceiveBenchMsgs bool
 	AlerterPhoneNumbers string
 	AlerterEnabled      bool
 }
@@ -71,6 +73,8 @@ func GetSubscriptionParamsById(subscriptionId int32) (sub SubscriptionParams, er
 			err = rowV.Scan(&sub.AlerterPhoneNumbers)
 		case "AlerterReceiver":
 			err = rowV.Scan(&sub.AlerterReceiver)
+		case "ReceiveBenchMsgs":
+			err = rowV.Scan(&sub.ReceiveBenchMsgs)
 		case "AlerterEnabled":
 			err = rowV.Scan(&sub.AlerterEnabled)
 		default:

@@ -79,4 +79,6 @@ type Config struct {
 	DefaultAlarmReceiver string
 	// 默认报警通道(短信,邮件,微信).
 	DefaultAlarmChan string
+	// 当前medis实例是否运行在压测环境.
+	RunAtBench bool
 }
