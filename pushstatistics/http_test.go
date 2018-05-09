@@ -52,7 +52,7 @@ func TestGetPushStatistics(t *testing.T) {
 			})
 			defer guard.Unpatch()
 
-			req, e := http.NewRequest(http.MethodGet, "/pushstatistics", nil)
+			req, e := http.NewRequest(http.MethodGet, "/prometeus/pushstatistics", nil)
 			So(e, ShouldBeNil)
 			resp := httptest.NewRecorder()
 
@@ -83,7 +83,7 @@ func TestGetPushStatistics(t *testing.T) {
 			})
 			defer guard.Unpatch()
 
-			req, e := http.NewRequest(http.MethodPost, "/pushstatistics", nil)
+			req, e := http.NewRequest(http.MethodPost, "/prometeus/pushstatistics", nil)
 			So(e, ShouldBeNil)
 			resp := httptest.NewRecorder()
 
