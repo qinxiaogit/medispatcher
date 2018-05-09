@@ -9,7 +9,7 @@ import (
 )
 
 func httpRun() {
-	http.HandleFunc("/pushstatistics", GetPushStatistics)
+	http.HandleFunc("/prometheus/pushstatistics", GetPushStatistics)
 	http.ListenAndServe(config.GetConfig().PrometheusApiAddr, nil)
 }
 
