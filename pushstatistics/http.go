@@ -9,8 +9,9 @@ import (
 )
 
 func httpRun() {
-	http.HandleFunc("/prometheus/pushstatistics", GetPushStatistics)
-	http.ListenAndServe(config.GetConfig().PrometheusApiAddr, nil)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/prometheus/pushstatistics", GetPushStatistics)
+	http.ListenAndServe(config.GetConfig().PrometheusApiAddr, mux)
 }
 
 // GetPushStatistics will 获取当前推送数据统计
