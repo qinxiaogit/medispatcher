@@ -22,6 +22,9 @@ DebugAddr=":9898"
 # 统计数据服务地址. 默认: 5606
 StatisticApiAddr="0.0.0.0:5606"
 
+# 为Prometheus提供采集数据服务地址. 默认: 25606
+PrometheusApiAddr="0.0.0.0:25606"
+
 # 队列服务器地址, 如beanstalkd的为 127.0.0.1:11300,127.0.0.1:11301
 #QueueServerAddr="127.0.0.1:11300,127.0.0.1:11301"
 QueueServerAddr="127.0.0.1:11300"

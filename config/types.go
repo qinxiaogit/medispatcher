@@ -4,13 +4,14 @@ import "medispatcher/Alerter"
 
 type Config struct {
 	// ListenAddr is the network address for providing extra api calls.
-	ListenAddr       string
-	DebugAddr        string
-	StatisticApiAddr string
-	InstallDir       string
-	PidFile          string
-	LOG_DIR          string
-	DATA_DIR         string
+	ListenAddr        string
+	DebugAddr         string
+	StatisticApiAddr  string
+	PrometheusApiAddr string
+	InstallDir        string
+	PidFile           string
+	LOG_DIR           string
+	DATA_DIR          string
 	// Environment tag for the message reception(worker) addresses.
 	RECEPTION_ENV string
 
