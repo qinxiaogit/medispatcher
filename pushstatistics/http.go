@@ -5,7 +5,6 @@ import (
 	"medispatcher/config"
 	"medispatcher/logger"
 	"net/http"
-	"strings"
 )
 
 func httpRun() {
@@ -34,6 +33,7 @@ func GetPushStatistics(w http.ResponseWriter, req *http.Request) {
 }
 
 func makePrometheusFormat(values map[string]map[string]*Categorys) (out string) {
+	/* go version >= 1.10
 	var strBuilder strings.Builder
 	for keyTopic, topics := range values {
 		keyTopic = fmt.Sprintf("medispatcher_topic_%s", keyTopic)
@@ -43,6 +43,16 @@ func makePrometheusFormat(values map[string]map[string]*Categorys) (out string) 
 			// strBuilder.WriteString(fmt.Sprintf("%s{channel=\"%s\",split=\"minute\"} %d\n", keyTopic, keyChan, channels.Minute))
 		}
 	}
+	*/
+	var strBuilder string
+	for keyTopic, topics := range values {
+		keyTopic = fmt.Sprintf("medispatcher_topic_%s", keyTopic)
+		strBuilder += fmt.Sprintf("# HELP %s A MQ topic.\n# TYPE %s topic\n", keyTopic, keyTopic)
+		for keyChan, channels := range topics {
+			strBuilder += fmt.Sprintf("%s{channel=\"%s\",split=\"second\"} %d\n", keyTopic, keyChan, channels.Second)
+			// strBuilder.WriteString(fmt.Sprintf("%s{channel=\"%s\",split=\"minute\"} %d\n", keyTopic, keyChan, channels.Minute))
+		}
+	}
 
-	return strBuilder.String()
+	return strBuilder
 }
