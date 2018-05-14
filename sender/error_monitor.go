@@ -90,14 +90,14 @@ func (em *errorMonitor) addSubscriptionCheck(sub *data.SubscriptionRecord, subPa
 	errorSum := sc.errorSum
 	var shouldAlert, reCount bool
 	currentTime := time.Now().Unix()
-	if currentTime-sc.lastAlertTime > INTERVAL_OF_ERROR_MONITOR_ALERT {
+	if currentTime-sc.lastAlertTime > subParam.IntervalOfErrorMonitorAlert {
 		// to many failures in the specified period, should alert.
-		if sc.errorSum > SUBSCRIPTION_TOTAL_FAILURE_ALERT_THRESHOLD {
+		if sc.errorSum > subParam.SubscriptionTotalFailureAlertThreshold {
 			shouldAlert = true
 			reCount = true
 		}
 	}
-	if currentTime-sc.errorCountStartTime > INTERVAL_OF_ERROR_MONITOR_ALERT {
+	if currentTime-sc.errorCountStartTime > subParam.IntervalOfErrorMonitorAlert {
 		// re-count the failures, if the last error occured long ago.
 		reCount = true
 	}
@@ -122,7 +122,7 @@ func (em *errorMonitor) addSubscriptionCheck(sub *data.SubscriptionRecord, subPa
 		Content: fmt.Sprintf(
 			"订阅者(%v)处理消息(%v)出错过于频繁. %v分钟内错误次数已达%v. 订阅ID: %v, 处理地址: %v",
 			sub.Subscriber_id, sub.Class_key,
-			INTERVAL_OF_ERROR_MONITOR_ALERT/60, errorSum,
+			subParam.IntervalOfErrorMonitorAlert/60, errorSum,
 			sub.Subscription_id, sub.Reception_channel,
 		),
 	}
@@ -140,7 +140,7 @@ func (em *errorMonitor) addSubscriptionCheck(sub *data.SubscriptionRecord, subPa
 }
 
 func (em *errorMonitor) addMessageCheck(sub *data.SubscriptionRecord, subParam SubscriptionParams, logId uint64, lastErrorString string, errorTimes uint16) {
-	if errorTimes < MESSAGE_FAILURE_ALERT_THRESHOLD {
+	if errorTimes < subParam.MessageFailureAlertThreshold {
 		return
 	}
 	if (em.alerterSms == nil || subParam.AlerterPhoneNumbers == "") && (em.alerterSms == nil || subParam.AlerterEmails == "") {
@@ -154,7 +154,7 @@ func (em *errorMonitor) addMessageCheck(sub *data.SubscriptionRecord, subParam S
 		}
 	}
 	currentTime := time.Now().Unix()
-	if currentTime-mc.lastAlertTime >= INTERVAL_OF_ERROR_MONITOR_ALERT {
+	if currentTime-mc.lastAlertTime >= subParam.IntervalOfErrorMonitorAlert {
 		mc.lastAlertTime = currentTime
 		em.checkPoints.messages[sub.Subscription_id] = mc
 		em.mcLock.Unlock()
@@ -243,7 +243,7 @@ func (em *errorMonitor) checkQueueBlocks() {
 				lastAlertTime, exists := alertStatistics[sub.Subscription_id]
 				currentTime := time.Now().Unix()
 
-				if exists && currentTime-lastAlertTime < INTERVAL_OF_ERROR_MONITOR_ALERT {
+				if exists && currentTime-lastAlertTime < subParams.IntervalOfErrorMonitorAlert {
 					continue
 				}
 				queueName := config.GetChannelName(sub.Class_key, sub.Subscription_id)
@@ -279,7 +279,7 @@ func (em *errorMonitor) checkQueueBlocks() {
 					continue
 				}
 
-				if blockedMessageCount >= MESSAGE_BLOCKED_ALERT_THRESHOLD || blockedReQueueMessageCount >= MESSAGE_BLOCKED_ALERT_THRESHOLD {
+				if blockedMessageCount >= int(subParams.MessageBlockedAlertThreshold) || blockedReQueueMessageCount >= int(subParams.MessageBlockedAlertThreshold) {
 					alert := Alerter.Alert{
 						Subject: "消息中心警报",
 						Content: fmt.Sprintf("队列 %v 消息等待数已达%v, 重试队列 %v 消息等待数已达%v, 请到后台订阅管理中调节消息处理速率参数或者优化woker的处理速度。\n订阅ID: %v\n消息处理地址: %v\n当前推送并发数: %v\n推送最小间隔时间: %vms",
