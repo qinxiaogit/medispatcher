@@ -129,7 +129,6 @@ func SetSubscriptionParams(subscriptionId int32, param SubscriptionParams) error
 	if err != nil {
 		return err
 	}
-	param.setAlertOption()
 	err = routineStatus.subParams.Store(subscriptionId)
 	if err != nil {
 		logger.GetLogger("WARN").Printf("Failed to save subscription params for subscription: %v: %v", subscriptionId, err)
