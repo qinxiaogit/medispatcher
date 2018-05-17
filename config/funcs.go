@@ -45,3 +45,12 @@ func GetConfigFromDisk(name string) (config interface{}, err error) {
 	}
 	return
 }
+
+func GetConfigDataFromDisk(name string) (config []byte, err error) {
+	var data []byte
+	data, err = ioutil.ReadFile(GetConfig().DATA_DIR + string(os.PathSeparator) + name + ".json")
+	if err != nil {
+		err = fmt.Errorf("Failed to load config data file: %v", err)
+	}
+	return data, err
+}

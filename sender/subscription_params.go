@@ -1,25 +1,53 @@
 package sender
+
 import (
-	"medispatcher/config"
-	"errors"
+	"encoding/json"
 	"fmt"
-	"reflect"
+	"medispatcher/config"
 	"medispatcher/data"
 	"medispatcher/logger"
 )
 
-// Parameters of the subscription
+// SubscriptionParams Parameters of the subscription
 type SubscriptionParams struct {
 	data.SubscriptionParams
+
+	// 错误次数计数间隔，单位: 秒，默认180秒
+	IntervalOfErrorMonitorAlert int64
+	// 发送失败阈值: 0<n<10，默认7次
+	MessageFailureAlertThreshold uint16
+	// 失败次数，默认120
+	SubscriptionTotalFailureAlertThreshold int32
+	// 消息堆积的报警极限，默认5000
+	MessageBlockedAlertThreshold int64
 }
 
 func NewSubscriptionParams() *SubscriptionParams {
 	return &SubscriptionParams{
-		SubscriptionParams: data.SubscriptionParams{AlerterEnabled:     true,
+		SubscriptionParams: data.SubscriptionParams{AlerterEnabled: true,
 			Concurrency:        config.GetConfig().SendersPerChannel,
 			ConcurrencyOfRetry: config.GetConfig().SendersPerRetryChannel,
 			IntervalOfSending:  config.GetConfig().IntervalOfSendingForSendRoutine,
 		},
+		IntervalOfErrorMonitorAlert:            INTERVAL_OF_ERROR_MONITOR_ALERT,
+		MessageFailureAlertThreshold:           MESSAGE_FAILURE_ALERT_THRESHOLD,
+		SubscriptionTotalFailureAlertThreshold: SUBSCRIPTION_TOTAL_FAILURE_ALERT_THRESHOLD,
+		MessageBlockedAlertThreshold:           MESSAGE_BLOCKED_ALERT_THRESHOLD,
+	}
+}
+
+func (sp *SubscriptionParams) setAlertOption() {
+	if sp.IntervalOfErrorMonitorAlert <= 0 {
+		sp.IntervalOfErrorMonitorAlert = INTERVAL_OF_ERROR_MONITOR_ALERT
+	}
+	if sp.MessageFailureAlertThreshold == 0 {
+		sp.MessageFailureAlertThreshold = MESSAGE_FAILURE_ALERT_THRESHOLD
+	}
+	if sp.SubscriptionTotalFailureAlertThreshold <= 0 {
+		sp.SubscriptionTotalFailureAlertThreshold = SUBSCRIPTION_TOTAL_FAILURE_ALERT_THRESHOLD
+	}
+	if sp.MessageBlockedAlertThreshold <= 0 {
+		sp.MessageBlockedAlertThreshold = MESSAGE_BLOCKED_ALERT_THRESHOLD
 	}
 }
 
@@ -29,7 +57,7 @@ func (sp *SubscriptionParams) getFileName(subscriptionId int32) string {
 }
 
 // RefreshAndLoad refresh local caches and load the latest values of the subscription parameters.
-func (sp *SubscriptionParams) RefreshAndLoad(subscriptionId int32) error{
+func (sp *SubscriptionParams) RefreshAndLoad(subscriptionId int32) error {
 	err := sp.LoadFromDb(subscriptionId)
 	if err != nil {
 		return err
@@ -43,45 +71,25 @@ func (sp *SubscriptionParams) RefreshAndLoad(subscriptionId int32) error{
 
 // Load subscription params from local data or database.
 func (sp *SubscriptionParams) Load(subscriptionId int32) (err error) {
-	defer func(){
+	defer func() {
 		nErr := recover()
 		if nErr != nil {
-			err = errors.New(fmt.Sprintf("Failed to load params: %v", nErr))
+			err = fmt.Errorf("Failed to load params: %v", nErr)
 		}
+		sp.setAlertOption()
 	}()
 	sp.SubscriptionId = subscriptionId
-	var data interface{}
-	data, err = config.GetConfigFromDisk(sp.getFileName(subscriptionId))
+	var data []byte
+	data, err = config.GetConfigDataFromDisk(sp.getFileName(subscriptionId))
 	if err != nil {
 		err = sp.LoadFromDb(subscriptionId)
 		if err == nil {
 			sp.Store(subscriptionId)
 		}
-		return
-	}else {
-		params, ok := data.(map[string]interface{})
-		if !ok {
-			err = errors.New("Failed to load params: type assertion failed.")
-			return
-		}
-		for n, d := range params {
-			switch n {
-			case "SubscriptionId":
-				if vf, ok := d.(float64); !ok {
-					err = errors.New(fmt.Sprintf("Invalid subscription parameter data type: ", n))
-					return
-				} else {
-					d = int32(vf)
-				}
-			case  "ConcurrencyOfRetry", "Concurrency", "ProcessTimeout", "IntervalOfSending":
-				if vf, ok := d.(float64); !ok {
-					err = errors.New(fmt.Sprintf("Invalid subscription parameter data type: ", n))
-					return
-				} else {
-					d = uint32(vf)
-				}
-			}
-			reflect.ValueOf(sp).Elem().FieldByName(n).Set(reflect.ValueOf(d))
+	} else {
+		e := json.Unmarshal(data, sp)
+		if e != nil {
+			err = fmt.Errorf("Failed to load params: %v", e)
 		}
 	}
 	return
@@ -92,7 +100,7 @@ func (sp *SubscriptionParams) Store(subscriptionId int32) error {
 	return config.SaveConfig(sp.getFileName(subscriptionId), *sp)
 }
 
-func (sp *SubscriptionParams) LoadFromDb(subscriptionId int32) error{
+func (sp *SubscriptionParams) LoadFromDb(subscriptionId int32) error {
 	sub, err := data.GetSubscriptionParamsById(subscriptionId)
 	if err != nil {
 		return err

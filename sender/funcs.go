@@ -17,8 +17,8 @@ func Stop(returnCh *chan string) {
 
 // "true" indicates that the service/process is in exiting stage.
 func shouldExit() bool {
-	select{
-	case  <-exitChan:
+	select {
+	case <-exitChan:
 		return true
 	default:
 		return false
@@ -155,6 +155,7 @@ func SetSubscriptionParams(subscriptionId int32, param SubscriptionParams) error
 	if err != nil {
 		return err
 	}
+	param.setAlertOption()
 	err = routineStatus.subParams.Store(subscriptionId)
 	if err != nil {
 		logger.GetLogger("WARN").Printf("Failed to save subscription params for subscription: %v: %v", subscriptionId, err)

@@ -3,10 +3,10 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"medispatcher/logger"
 	"medispatcher/rpc"
 	"medispatcher/sender"
 	"reflect"
-	"medispatcher/logger"
 	"runtime/debug"
 )
 
@@ -78,12 +78,39 @@ func (i SetSubscriptionParams) Process(args map[string]interface{}) (re interfac
 			switch n {
 			case "ConcurrencyOfRetry", "Concurrency", "IntervalOfSending", "ProcessTimeout":
 				if vf, ok := v.(float64); !ok {
-					err = errors.New(fmt.Sprintf("Param type error expecting: float/int: %s: %v", n, v))
+					err = fmt.Errorf("Param type error expecting: float/int: %s: %v", n, v)
 					return
-				} else{
+				} else {
 					v = uint32(vf)
 				}
-
+			case "IntervalOfErrorMonitorAlert":
+				if vf, ok := v.(float64); !ok {
+					err = fmt.Errorf("Param type error expecting: float/int: %s: %v", n, v)
+					return
+				} else {
+					v = int64(vf)
+				}
+			case "MessageFailureAlertThreshold":
+				if vf, ok := v.(float64); !ok {
+					err = fmt.Errorf("Param type error expecting: float/int: %s: %v", n, v)
+					return
+				} else {
+					v = uint16(vf)
+				}
+			case "SubscriptionTotalFailureAlertThreshold":
+				if vf, ok := v.(float64); !ok {
+					err = fmt.Errorf("Param type error expecting: float/int: %s: %v", n, v)
+					return
+				} else {
+					v = int32(vf)
+				}
+			case "MessageBlockedAlertThreshold":
+				if vf, ok := v.(float64); !ok {
+					err = fmt.Errorf("Param type error expecting: float/int: %s: %v", n, v)
+					return
+				} else {
+					v = int64(vf)
+				}
 			}
 			rElemField.Set(reflect.ValueOf(v))
 		}
