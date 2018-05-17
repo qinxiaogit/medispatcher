@@ -36,7 +36,8 @@ func NewSubscriptionParams() *SubscriptionParams {
 	}
 }
 
-func (sp *SubscriptionParams) setAlertOption() {
+// fixAlertOption 修正从文件读取数据后默认值为0的问题
+func (sp *SubscriptionParams) fixAlertOption() {
 	if sp.IntervalOfErrorMonitorAlert <= 0 {
 		sp.IntervalOfErrorMonitorAlert = INTERVAL_OF_ERROR_MONITOR_ALERT
 	}
@@ -62,6 +63,16 @@ func (sp *SubscriptionParams) RefreshAndLoad(subscriptionId int32) error {
 	if err != nil {
 		return err
 	}
+
+	// 读取Alert的四项配置后再Store
+	spTmp := NewSubscriptionParams()
+	if err := spTmp.LoadFromLocal(subscriptionId); err == nil {
+		sp.IntervalOfErrorMonitorAlert = spTmp.IntervalOfErrorMonitorAlert
+		sp.MessageFailureAlertThreshold = spTmp.MessageFailureAlertThreshold
+		sp.SubscriptionTotalFailureAlertThreshold = spTmp.SubscriptionTotalFailureAlertThreshold
+		sp.MessageBlockedAlertThreshold = spTmp.MessageBlockedAlertThreshold
+	}
+
 	err = sp.Store(subscriptionId)
 	if err != nil {
 		logger.GetLogger("WARN").Printf("Failed to store subscription parameters to local storage: %v", err)
@@ -76,27 +87,20 @@ func (sp *SubscriptionParams) Load(subscriptionId int32) (err error) {
 		if nErr != nil {
 			err = fmt.Errorf("Failed to load params: %v", nErr)
 		}
-		sp.setAlertOption()
 	}()
 	sp.SubscriptionId = subscriptionId
-	var data []byte
-	data, err = config.GetConfigDataFromDisk(sp.getFileName(subscriptionId))
-	if err != nil {
-		err = sp.LoadFromDb(subscriptionId)
-		if err == nil {
-			sp.Store(subscriptionId)
+	if err = sp.LoadFromLocal(subscriptionId); err != nil {
+		if err = sp.LoadFromDb(subscriptionId); err != nil {
+			return
 		}
-	} else {
-		e := json.Unmarshal(data, sp)
-		if e != nil {
-			err = fmt.Errorf("Failed to load params: %v", e)
-		}
+		sp.Store(subscriptionId)
 	}
 	return
 }
 
 // Store subscription params to local data.
 func (sp *SubscriptionParams) Store(subscriptionId int32) error {
+	sp.fixAlertOption()
 	return config.SaveConfig(sp.getFileName(subscriptionId), *sp)
 }
 
@@ -106,5 +110,19 @@ func (sp *SubscriptionParams) LoadFromDb(subscriptionId int32) error {
 		return err
 	}
 	sp.SubscriptionParams = sub
+	sp.fixAlertOption()
+	return nil
+}
+
+func (sp *SubscriptionParams) LoadFromLocal(subscriptionId int32) error {
+	data, err := config.GetConfigDataFromDisk(sp.getFileName(subscriptionId))
+	if err != nil {
+		return fmt.Errorf("Failed to load params: %v", err)
+	}
+	err = json.Unmarshal(data, sp)
+	if err != nil {
+		err = fmt.Errorf("Failed to unmarshal params: %v", err)
+	}
+	sp.fixAlertOption()
 	return nil
 }
