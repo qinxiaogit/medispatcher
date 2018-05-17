@@ -5,6 +5,7 @@ import (
 	"medispatcher/config"
 	"medispatcher/logger"
 	"net/http"
+	"regexp"
 )
 
 func httpRun() {
@@ -46,7 +47,7 @@ func makePrometheusFormat(values map[string]map[string]*Categorys) (out string) 
 	*/
 	var strBuilder string
 	for keyTopic, topics := range values {
-		keyTopic = fmt.Sprintf("medispatcher_topic_%s", keyTopic)
+		keyTopic = fmt.Sprintf("TOPIC:%s", fixTopicString(keyTopic))
 		strBuilder += fmt.Sprintf("# HELP %s A MQ topic.\n# TYPE %s topic\n", keyTopic, keyTopic)
 		for keyChan, channels := range topics {
 			strBuilder += fmt.Sprintf("%s{channel=\"%s\",split=\"second\"} %d\n", keyTopic, keyChan, channels.Second)
@@ -55,4 +56,9 @@ func makePrometheusFormat(values map[string]map[string]*Categorys) (out string) 
 	}
 
 	return strBuilder
+}
+
+func fixTopicString(topic string) string {
+	re := regexp.MustCompile("([^a-zA-Z0-9_:]+)")
+	return re.ReplaceAllString(topic, "_")
 }
