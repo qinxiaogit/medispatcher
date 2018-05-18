@@ -106,6 +106,23 @@ func SetSubscriptionParams(subscriptionId int32, param SubscriptionParams) error
 	if err == nil {
 		err = routineStatus.SetSubParam("AlerterEnabled", param.AlerterEnabled)
 	}
+
+	if err == nil {
+		err = routineStatus.SetSubParam("IntervalOfErrorMonitorAlert", param.IntervalOfErrorMonitorAlert)
+	}
+
+	if err == nil {
+		err = routineStatus.SetSubParam("SubscriptionTotalFailureAlertThreshold", param.SubscriptionTotalFailureAlertThreshold)
+	}
+
+	if err == nil {
+		err = routineStatus.SetSubParam("MessageFailureAlertThreshold", param.MessageFailureAlertThreshold)
+	}
+
+	if err == nil {
+		err = routineStatus.SetSubParam("MessageBlockedAlertThreshold", param.MessageBlockedAlertThreshold)
+	}
+	
 	if err != nil {
 		return err
 	}
