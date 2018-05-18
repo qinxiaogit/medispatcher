@@ -11,28 +11,19 @@ import (
 // SubscriptionParams Parameters of the subscription
 type SubscriptionParams struct {
 	data.SubscriptionParams
-
-	// 错误次数计数间隔，单位: 秒，默认180秒
-	IntervalOfErrorMonitorAlert int64
-	// 发送失败阈值: 0<n<10，默认7次
-	MessageFailureAlertThreshold uint16
-	// 失败次数，默认120
-	SubscriptionTotalFailureAlertThreshold int32
-	// 消息堆积的报警极限，默认5000
-	MessageBlockedAlertThreshold int64
 }
 
 func NewSubscriptionParams() *SubscriptionParams {
 	return &SubscriptionParams{
 		SubscriptionParams: data.SubscriptionParams{AlerterEnabled: true,
-			Concurrency:        config.GetConfig().SendersPerChannel,
-			ConcurrencyOfRetry: config.GetConfig().SendersPerRetryChannel,
-			IntervalOfSending:  config.GetConfig().IntervalOfSendingForSendRoutine,
+			Concurrency:                            config.GetConfig().SendersPerChannel,
+			ConcurrencyOfRetry:                     config.GetConfig().SendersPerRetryChannel,
+			IntervalOfSending:                      config.GetConfig().IntervalOfSendingForSendRoutine,
+			IntervalOfErrorMonitorAlert:            INTERVAL_OF_ERROR_MONITOR_ALERT,
+			MessageFailureAlertThreshold:           MESSAGE_FAILURE_ALERT_THRESHOLD,
+			SubscriptionTotalFailureAlertThreshold: SUBSCRIPTION_TOTAL_FAILURE_ALERT_THRESHOLD,
+			MessageBlockedAlertThreshold:           MESSAGE_BLOCKED_ALERT_THRESHOLD,
 		},
-		IntervalOfErrorMonitorAlert:            INTERVAL_OF_ERROR_MONITOR_ALERT,
-		MessageFailureAlertThreshold:           MESSAGE_FAILURE_ALERT_THRESHOLD,
-		SubscriptionTotalFailureAlertThreshold: SUBSCRIPTION_TOTAL_FAILURE_ALERT_THRESHOLD,
-		MessageBlockedAlertThreshold:           MESSAGE_BLOCKED_ALERT_THRESHOLD,
 	}
 }
 
@@ -62,15 +53,6 @@ func (sp *SubscriptionParams) RefreshAndLoad(subscriptionId int32) error {
 	err := sp.LoadFromDb(subscriptionId)
 	if err != nil {
 		return err
-	}
-
-	// 读取Alert的四项配置后再Store
-	spTmp := NewSubscriptionParams()
-	if err := spTmp.LoadFromLocal(subscriptionId); err == nil {
-		sp.IntervalOfErrorMonitorAlert = spTmp.IntervalOfErrorMonitorAlert
-		sp.MessageFailureAlertThreshold = spTmp.MessageFailureAlertThreshold
-		sp.SubscriptionTotalFailureAlertThreshold = spTmp.SubscriptionTotalFailureAlertThreshold
-		sp.MessageBlockedAlertThreshold = spTmp.MessageBlockedAlertThreshold
 	}
 
 	err = sp.Store(subscriptionId)
