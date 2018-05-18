@@ -15,6 +15,7 @@ func httpRun() {
 }
 
 // GetPushStatistics will 获取当前推送数据统计
+// ?nozero=true 0值不传递
 func GetPushStatistics(w http.ResponseWriter, req *http.Request) {
 	defer func() {
 		if e := recover(); e != nil {
@@ -27,13 +28,14 @@ func GetPushStatistics(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte(http.StatusText(http.StatusMethodNotAllowed)))
 		return
 	}
-	out := makePrometheusFormat(ShowData())
+
+	out := makePrometheusFormat(ShowData(), req.URL.Query().Get("nozero") == "true")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(out))
 	return
 }
 
-func makePrometheusFormat(values map[string]map[string]*Categorys) (out string) {
+func makePrometheusFormat(values map[string]map[string]*Categorys, nozero bool) (out string) {
 	/* go version >= 1.10
 	var strBuilder strings.Builder
 	for keyTopic, topics := range values {
@@ -48,10 +50,17 @@ func makePrometheusFormat(values map[string]map[string]*Categorys) (out string) 
 	var strBuilder string
 	for keyTopic, topics := range values {
 		keyTopic = fmt.Sprintf("TOPIC:%s", fixTopicString(keyTopic))
-		strBuilder += fmt.Sprintf("# HELP %s A MQ topic.\n# TYPE %s topic\n", keyTopic, keyTopic)
+
+		tmpStr := ""
 		for keyChan, channels := range topics {
-			strBuilder += fmt.Sprintf("%s{channel=\"%s\",split=\"second\"} %d\n", keyTopic, keyChan, channels.Second)
+			if nozero && channels.Second == 0 {
+				continue
+			}
+			tmpStr += fmt.Sprintf("%s{channel=\"%s\",split=\"second\"} %d\n", keyTopic, keyChan, channels.Second)
 			// strBuilder.WriteString(fmt.Sprintf("%s{channel=\"%s\",split=\"minute\"} %d\n", keyTopic, keyChan, channels.Minute))
+		}
+		if tmpStr != "" {
+			strBuilder += fmt.Sprintf("# HELP %s A MQ topic.\n# TYPE %s topic\n", keyTopic, keyTopic) + tmpStr
 		}
 	}
 
