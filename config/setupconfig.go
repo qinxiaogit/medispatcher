@@ -11,8 +11,10 @@ import (
 	"time"
 )
 
+var BuildTime       = "unknonw"
+
 const (
-	VerNo           = "2.3.1"
+	VerNo           = "2.4.3.1"
 	MAX_CONNECTIONS = 15000
 	// 客户端响应超时
 	CLIENT_TIMEOUT  = time.Second * 5
@@ -42,11 +44,13 @@ var config = &Config{
 	MaxSendersPerRetryChannel:            uint32(10),
 	CoeOfIntervalForRetrySendingMsg:      uint16(10),
 	EnableMsgSentLog:                     true,
+	SplitLog:                             true,
 	MaxRetryTimesOfSendingMessage:        uint16(10),
 	MaxMessageProcessTime:                uint32(30000),
 	DefaultMaxMessageProcessTime:         uint32(5000),
 	MsgQueueFaultToleranceListNamePrefix: "mec_list_of_msg_for_restore_to_queue_server:",
 	DATA_DIR: "/var/lib/medispatcher/",
+	RunAtBench: false,
 }
 
 //	TODO: not coroutine safe
@@ -70,6 +74,20 @@ func Setup() error {
 	config, err = ParseConfig()
 	if err != nil {
 		return errors.New(fmt.Sprintf("Failed to initialize configs: %s ", err))
+	}
+
+	// 加载缺省报警设置.
+	result, err := GetConfigFromDisk("default_alarm")
+	if err == nil {
+		if v, ok := result.(map[string]interface{}); ok {
+			if _, exists := v["DefaultAlarmReceiver"]; exists {
+				config.DefaultAlarmReceiver = v["DefaultAlarmReceiver"].(string)
+			}
+
+			if _, exists := v["DefaultAlarmChan"]; exists {
+				config.DefaultAlarmChan = v["DefaultAlarmChan"].(string)
+			}
+		}
 	}
 
 	var daemonUid, daemonGid int

@@ -8,16 +8,16 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"gopkg.in/vmihailenco/msgpack.v2"
 	"medispatcher/config"
-	"medispatcher/logger"
 	"strings"
 	"time"
+	"sync"
+	"strconv"
 )
 
+var dbCreateLock = new(sync.Mutex)
+var db *DB
 type DB struct {
-	Conn                  *sql.DB
-	id                    int64
-	countOfQueries        uint64
-	maxQueryCountsPerConn uint64
+	*sql.DB
 	dsn                   string
 }
 
@@ -26,10 +26,6 @@ type RedisConn struct {
 	conn redis.Conn
 	id   int64
 }
-
-var dbPoolIdle = map[int64]*DB{}
-var dbPoolUsing = map[int64]*DB{}
-var dbPoolAccessLock = make(chan int32, 1)
 
 var redisPoolIdle = map[int64]*RedisConn{}
 var redisPoolUsing = map[int64]*RedisConn{}
@@ -105,41 +101,12 @@ func (redis *RedisConn) Release() {
 	redisPoolIdle[redis.id] = redis
 }
 
-// Release DB connection to the pool.
-func (db *DB) Release() {
-	getDbPoolLock()
-	defer releaseDbPoolLock()
-	delete(dbPoolUsing, db.id)
-	dbPoolIdle[db.id] = db
-}
-
 func (db *DB) Query(sqlStr string, args ...interface{}) (*sql.Rows, error) {
-	stm, err := db.Conn.Prepare(sqlStr)
-	if err != nil {
-		err = errors.New(fmt.Sprintf("Failed to prepare sql: %v: %v", sqlStr, err))
-		logger.GetLogger("ERROR").Print(err)
-		return nil, err
-	}
-	rows, err := stm.Query(args...)
-	if err != nil {
-		err = errors.New(fmt.Sprintf("Query failed: %v: %v", sqlStr, err))
-		logger.GetLogger("ERROR").Print(err)
-		return nil, err
-	}
-	defer stm.Close()
-	return rows, nil
+	return db.DB.Query(sqlStr, args...)
 }
 
-func (db *DB) QueryRow(sqlStr string, args ...interface{}) (*sql.Row, error) {
-	stm, err := db.Conn.Prepare(sqlStr)
-	if err != nil {
-		err = errors.New(fmt.Sprintf("Failed to prepare sql: %v: %v", sqlStr, err))
-		logger.GetLogger("ERROR").Print(err)
-		return nil, err
-	}
-	defer stm.Close()
-	row := stm.QueryRow(args...)
-	return row, nil
+func (db *DB) QueryRow(sqlStr string, args ...interface{}) (*sql.Row) {
+	return db.DB.QueryRow(sqlStr, args...)
 }
 
 func (db *DB) Insert(table string, data map[string]interface{}) (re sql.Result, err error) {
@@ -164,18 +131,9 @@ func (db *DB) Insert(table string, data map[string]interface{}) (re sql.Result, 
 }
 
 func (db *DB) Exec(query string, args ...interface{}) (sql.Result, error) {
-	return db.Conn.Exec(query, args...)
+	return db.DB.Exec(query, args...)
 }
 
-func getDbPoolLock() bool {
-	dbPoolAccessLock <- int32(1)
-	return true
-}
-
-func releaseDbPoolLock() bool {
-	<-dbPoolAccessLock
-	return true
-}
 
 func getRedisPoolLock() bool {
 	redisPoolAccessLock <- int32(1)
@@ -240,71 +198,30 @@ func createRedisConn() (*RedisConn, error) {
 }
 
 func GetDb() (*DB, error) {
-	db := getDbFromPool()
+	dbCreateLock.Lock()
+	defer dbCreateLock.Unlock()
 	if db != nil {
 		return db, nil
 	}
-
-	getDbPoolLock()
-	inUsing := len(dbPoolUsing)
-	releaseDbPoolLock()
-	if inUsing > MAX_DB_CONNECTIONS {
-		retryTimes := 0
-		for {
-			time.Sleep(time.Millisecond * 10)
-			retryTimes += 1
-			if retryTimes > MAX_DB_CONNECTIONS {
-				break
-			} else {
-				db = getDbFromPool()
-				if db != nil {
-					return db, nil
-				}
-			}
-		}
-		return nil, errors.New(fmt.Sprintf("Max connections of pool reached: %v, try again later.", MAX_DB_CONNECTIONS))
-	}
-	dbNew, err := createDbConn()
-	db = getDbFromPool()
-	if db != nil {
-		if err == nil {
-			dbNew.Conn.Close()
-		}
-		return db, nil
-	} else {
-		if err != nil {
-			return nil, err
-		}
-		getDbPoolLock()
-		defer releaseDbPoolLock()
-		dbPoolUsing[dbNew.id] = dbNew
-		db = dbNew
-
-	}
-	return db, nil
-}
-
-func createDbConn() (*DB, error) {
+	var err error
 	dbConfig := config.GetConfig().Database
 	dsn := fmt.Sprintf("%v:%v@tcp(%v:%v)/%v?%v", dbConfig["User"], dbConfig["Password"], dbConfig["Host"], dbConfig["Port"], dbConfig["DbName"], dbConfig["Options"])
-	db, err := sql.Open("mysql", dsn)
+	dbC, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return nil, err
 	}
-	db.SetMaxOpenConns(1)
-	id := time.Now().UnixNano()
-	return &DB{Conn: db, id: id, dsn: dsn, maxQueryCountsPerConn: 100}, nil
-}
-
-func getDbFromPool() *DB {
-	getDbPoolLock()
-	defer releaseDbPoolLock()
-	if len(dbPoolIdle) > 0 {
-		for _, db := range dbPoolIdle {
-			return db
-		}
+	maxConnI, err := strconv.ParseInt(fmt.Sprintf("%v", dbConfig["MaxConn"]), 10, 32)
+	if err != nil{
+		maxConnI = int64(MAX_DB_CONNECTIONS)
+	} else if maxConnI > int64(MAX_DB_CONNECTIONS) {
+		maxConnI = int64(MAX_DB_CONNECTIONS)
 	}
-	return nil
+	dbC.SetMaxOpenConns(int(maxConnI))
+	db = &DB{
+		DB: dbC,
+		dsn: dsn,
+	}
+	return db, nil
 }
 
 func getRedisFromPool() *RedisConn {

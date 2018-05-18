@@ -1,4 +1,5 @@
-BUILD_CMD=CGO_ENABLED=0 go build -installsuffix cgo -a -ldflags "-w" -o build/medispatcher
+BUILD_TIME="`LANG=en_US date -u | sed 's/ /_/g'`"
+BUILD_CMD=CGO_ENABLED=0 go build -a -ldflags "-w -X medispatcher/config.BuildTime=${BUILD_TIME}" -o build/medispatcher
 default: before-make
 	$(BUILD_CMD)
 zippack: default

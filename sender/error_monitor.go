@@ -5,6 +5,7 @@ import (
 	"medispatcher/Alerter"
 	_ "medispatcher/Alerter/proxy/Email"
 	_ "medispatcher/Alerter/proxy/Sms"
+	_ "medispatcher/Alerter/proxy/AlarmPlatform"
 	"medispatcher/broker"
 	"medispatcher/broker/beanstalk"
 	"medispatcher/config"
@@ -35,6 +36,7 @@ type errorCheckPoints struct {
 type errorMonitor struct {
 	alerterEmail *Alerter.Alerter
 	alerterSms   *Alerter.Alerter
+	alarmPlatform *Alerter.Alerter
 	// Subscription checkpoints lock
 	scLock *sync.Mutex
 	// Message checkpoints lock
@@ -55,9 +57,14 @@ func newErrorMonitor() *errorMonitor {
 	if err != nil {
 		logger.GetLogger("WARN").Printf("Failed to create Sms alerter: %v", err)
 	}
+	alarmPlatform, err := Alerter.New(config.GetConfig().AlarmPlatform)
+	if err != nil {
+		logger.GetLogger("WARN").Printf("Failed to create platform alerter: %v", err)
+	}
 	monitor := &errorMonitor{
 		alerterEmail: alerterEmail,
 		alerterSms:   alerterSms,
+		alarmPlatform: alarmPlatform,
 		scLock:       &sync.Mutex{},
 		mcLock:       &sync.Mutex{},
 		checkPoints: errorCheckPoints{
@@ -73,8 +80,11 @@ func (em *errorMonitor) start() {
 }
 
 func (em *errorMonitor) addSubscriptionCheck(sub *data.SubscriptionRecord, subParam SubscriptionParams) {
-	if (em.alerterSms == nil || subParam.AlerterPhoneNumbers == "") && (em.alerterSms == nil || subParam.AlerterEmails == "") {
-		return
+	if (em.alerterSms == nil || subParam.AlerterPhoneNumbers == "") && (em.alerterSms == nil || subParam.AlerterEmails == "") && (em.alarmPlatform == nil || subParam.AlerterReceiver == "") {
+		// 同时也无法使用默认报警.
+		if em.alarmPlatform == nil || config.GetConfig().DefaultAlarmReceiver == "" || config.GetConfig().DefaultAlarmChan == "" {
+			return
+		}
 	}
 	em.scLock.Lock()
 	sc, ok := em.checkPoints.subscriptions[sub.Subscription_id]
@@ -126,16 +136,41 @@ func (em *errorMonitor) addSubscriptionCheck(sub *data.SubscriptionRecord, subPa
 			sub.Subscription_id, sub.Reception_channel,
 		),
 	}
+
+	// 如果订阅没有配置报警接收人则使用全局默认配置.
+	var sentAlarm bool
 	if em.alerterEmail != nil && subParam.AlerterEmails != "" {
 		alert.Recipient = subParam.AlerterEmails
 		alert.TemplateName = "MessageSendingFailed.eml"
 		em.alerterEmail.Alert(alert)
+
+		sentAlarm = true
 	}
 
 	if em.alerterSms != nil && subParam.AlerterPhoneNumbers != "" {
 		alert.Recipient = subParam.AlerterPhoneNumbers
 		alert.TemplateName = "MessageSendingFailed.sms"
 		em.alerterSms.Alert(alert)
+
+		sentAlarm = true
+	}
+
+	if em.alarmPlatform != nil && subParam.AlerterReceiver != "" {
+		alert.Subject = "消息中心警报(统一告警)"
+		alert.Recipient = subParam.AlerterReceiver
+		alert.TemplateName = "MessageSendingFailed.sms"
+		em.alarmPlatform.Alert(alert)
+
+		sentAlarm = true
+	}
+
+	if em.alarmPlatform != nil && ! sentAlarm && config.GetConfig().DefaultAlarmReceiver != "" && config.GetConfig().DefaultAlarmChan != "" {
+		alert.Subject = "消息中心警报(统一告警:未设置报警接收人)"
+		alert.Content = fmt.Sprintf("***警告:订阅(ID=\"%v\")未设置报警接收人;***\r\n%s", sub.Subscription_id, alert.Content)
+		alert.Recipient = config.GetConfig().DefaultAlarmReceiver
+		alert.AlarmReceiveChan = config.GetConfig().DefaultAlarmChan
+		alert.TemplateName = "MessageSendingFailed.sms"
+		em.alarmPlatform.Alert(alert)
 	}
 }
 
@@ -143,8 +178,11 @@ func (em *errorMonitor) addMessageCheck(sub *data.SubscriptionRecord, subParam S
 	if errorTimes < subParam.MessageFailureAlertThreshold {
 		return
 	}
-	if (em.alerterSms == nil || subParam.AlerterPhoneNumbers == "") && (em.alerterSms == nil || subParam.AlerterEmails == "") {
-		return
+	if (em.alerterSms == nil || subParam.AlerterPhoneNumbers == "") && (em.alerterSms == nil || subParam.AlerterEmails == "") && (em.alarmPlatform == nil || subParam.AlerterReceiver == "") {
+		// 同时也无法使用默认报警.
+		if em.alarmPlatform == nil || config.GetConfig().DefaultAlarmReceiver == "" || config.GetConfig().DefaultAlarmChan == "" {
+			return
+		}
 	}
 	em.mcLock.Lock()
 	mc, ok := em.checkPoints.messages[sub.Subscription_id]
@@ -195,16 +233,41 @@ func (em *errorMonitor) addMessageCheck(sub *data.SubscriptionRecord, subParam S
 		Subject: "消息中心警报",
 	}
 	alert.Content = emailMsg
+
+	// 如果订阅没有配置报警接收人则使用全局默认配置.
+	var sentAlarm bool
 	if em.alerterEmail != nil && subParam.AlerterEmails != "" {
 		alert.Recipient = subParam.AlerterEmails
 		alert.TemplateName = "MessageSendingFailed.eml"
 		em.alerterEmail.Alert(alert)
+
+		sentAlarm = true
 	}
 	alert.Content = smsMsg
 	if em.alerterSms != nil && subParam.AlerterPhoneNumbers != "" {
 		alert.Recipient = subParam.AlerterPhoneNumbers
 		alert.TemplateName = "MessageSendingFailed.sms"
 		em.alerterSms.Alert(alert)
+
+		sentAlarm = true
+	}
+
+	if em.alarmPlatform != nil && subParam.AlerterReceiver != "" {
+		alert.Subject = "消息中心警报(统一告警)"
+		alert.Recipient = subParam.AlerterReceiver
+		alert.TemplateName = "MessageSendingFailed.sms"
+		em.alarmPlatform.Alert(alert)
+
+		sentAlarm = true
+	}
+
+	if em.alarmPlatform != nil && ! sentAlarm && config.GetConfig().DefaultAlarmReceiver != "" && config.GetConfig().DefaultAlarmChan != "" {
+		alert.Subject = "消息中心警报(统一告警:未设置报警接收人)"
+		alert.Content = fmt.Sprintf("***警告:订阅(ID=\"%v\")未设置报警接收人;***\r\n%s", sub.Subscription_id, alert.Content)
+		alert.Recipient = config.GetConfig().DefaultAlarmReceiver
+		alert.AlarmReceiveChan = config.GetConfig().DefaultAlarmChan
+		alert.TemplateName = "MessageSendingFailed.sms"
+		em.alarmPlatform.Alert(alert)
 	}
 }
 
@@ -215,7 +278,7 @@ func (em *errorMonitor) checkQueueBlocks() {
 		stats, reQueueStats      map[string]map[string]interface{}
 		errOfQueue, errOfReQueue error
 	)
-	if em.alerterEmail == nil && em.alerterSms == nil {
+	if em.alerterEmail == nil && em.alerterSms == nil && em.alarmPlatform == nil {
 		return
 	}
 	brPool = broker.GetBrokerPoolWithBlock(1, 3, shouldExit)
@@ -223,6 +286,9 @@ func (em *errorMonitor) checkQueueBlocks() {
 		return
 	}
 	alertStatistics := map[int32]int64{}
+
+	// 如果订阅没有配置报警接收人则使用全局默认配置.
+	var sentAlarm bool
 	for {
 		time.Sleep(time.Second * 15)
 		subscriptions, err := data.GetAllSubscriptionsWithCache()
@@ -237,8 +303,16 @@ func (em *errorMonitor) checkQueueBlocks() {
 					logger.GetLogger("WARN").Printf("Failed to load subscription[%v] params: %v", sub.Subscription_id, err)
 					continue
 				}
-				if !subParams.AlerterEnabled || (subParams.AlerterEmails == "" && subParams.AlerterPhoneNumbers == "") {
-					continue
+				// 当前订阅没有打开报警.
+				if !subParams.AlerterEnabled {
+					continue;
+				}
+				
+				if subParams.AlerterEmails == "" && subParams.AlerterPhoneNumbers == "" && subParams.AlerterReceiver == "" {
+					// 没有任何可用的报警接收方.
+					if config.GetConfig().DefaultAlarmReceiver == "" && config.GetConfig().DefaultAlarmChan == "" {
+						continue
+					}
 				}
 				lastAlertTime, exists := alertStatistics[sub.Subscription_id]
 				currentTime := time.Now().Unix()
@@ -288,17 +362,40 @@ func (em *errorMonitor) checkQueueBlocks() {
 							subParams.IntervalOfSending,
 						),
 					}
-					if subParams.AlerterEmails != "" {
+					if subParams.AlerterEmails != ""  && em.alerterEmail != nil {
 						alert.Recipient = subParams.AlerterEmails
 						alert.TemplateName = "MessageSendingFailed.eml"
 						em.alerterEmail.Alert(alert)
+
+						sentAlarm = true
 					}
 
-					if subParams.AlerterPhoneNumbers != "" {
+					if subParams.AlerterPhoneNumbers != "" && em.alerterSms != nil{
 						alert.Recipient = subParams.AlerterPhoneNumbers
 						alert.TemplateName = "MessageSendingFailed.sms"
 						em.alerterSms.Alert(alert)
+
+						sentAlarm = true
 					}
+
+					if subParams.AlerterReceiver != "" && em.alarmPlatform != nil {
+						alert.Subject = "消息中心警报(统一告警)"
+						alert.Recipient = subParams.AlerterReceiver
+						alert.TemplateName = "MessageSendingFailed.sms"
+	                    em.alarmPlatform.Alert(alert)
+
+	                    sentAlarm = true
+	                }
+
+	                if em.alarmPlatform != nil && ! sentAlarm && config.GetConfig().DefaultAlarmReceiver != "" && config.GetConfig().DefaultAlarmChan != "" {
+						alert.Subject = "消息中心警报(统一告警:未设置报警接收人)"
+						alert.Content = fmt.Sprintf("***警告:订阅(ID=\"%v\")未设置报警接收人;***\r\n%s", sub.Subscription_id, alert.Content)
+						alert.Recipient = config.GetConfig().DefaultAlarmReceiver
+						alert.AlarmReceiveChan = config.GetConfig().DefaultAlarmChan
+						alert.TemplateName = "MessageSendingFailed.sms"
+						em.alarmPlatform.Alert(alert)
+					}
+
 					alertStatistics[sub.Subscription_id] = currentTime
 				}
 			}

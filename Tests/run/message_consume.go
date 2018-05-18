@@ -149,6 +149,7 @@ func worker(msgChan chan *beanstalk.Msg) {
 	for {
 		select {
 		case msg := <-msgChan:
+		time.Sleep(time.Millisecond * 20)
 			n += 1
 			consumerCounterChan <- 1
 			delMsgChan <- msg

@@ -6,6 +6,7 @@ import (
 	"medispatcher/config"
 	"medispatcher/data"
 	"medispatcher/logger"
+	"medispatcher/sender"
 	"runtime/debug"
 	"sync"
 	"time"
@@ -118,6 +119,15 @@ func StartAndWait() {
 			}
 
 			for _, sub := range subscriptions {
+				// 如果当前medis实例运行在bench模式，那么需要检查订阅者是否订阅压测消息.
+				if config.GetConfig().RunAtBench {
+					// 订阅者不接受bench环境的消息.
+					if ! sender.ReceiveBenchMsgs(sub.Subscription_id) {
+						logger.GetLogger("INFO").Printf("Ignore the bench environment message %v %v", msg.MsgKey, sub.Subscription_id)
+						continue
+					}
+				}
+
 				subChannel := config.GetChannelName(msg.MsgKey, sub.Subscription_id)
 				_, err = brCmdPool.Pub(subChannel, jobBody, broker.DEFAULT_MSG_PRIORITY, 0, broker.DEFAULT_MSG_TTR)
 				if err != nil {

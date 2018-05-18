@@ -28,6 +28,7 @@ type Config struct {
 	//	User     string
 	//	Password string
 	//	DbName 	  string
+	//      MaxConn   int
 	Database map[string]interface{}
 
 	// Redis client settings.
@@ -42,6 +43,7 @@ type Config struct {
 
 	AlerterEmail Alerter.Config
 	AlerterSms   Alerter.Config
+	AlarmPlatform Alerter.Config
 
 	ListenersOfMainQueue uint16
 
@@ -70,4 +72,14 @@ type Config struct {
 
 	// list name for storing messages which failed sent to queue server.
 	MsgQueueFaultToleranceListNamePrefix string
+
+	// 是否按天切分日志
+	SplitLog bool
+
+	// 默认报警接收人(针对没有配置报警的订阅).
+	DefaultAlarmReceiver string
+	// 默认报警通道(短信,邮件,微信).
+	DefaultAlarmChan string
+	// 当前medis实例是否运行在压测环境.
+	RunAtBench bool
 }

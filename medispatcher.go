@@ -36,6 +36,9 @@ func main() {
 	runtime.GOMAXPROCS(maxProcs)
 
 	logger.InitDefaultLogger()
+	if !config.GetConfig().SplitLog {
+		logger.SetSingleFile()
+	}
 
 	go ProcessSysSignal()
 	go rpcSrv.StartServer()

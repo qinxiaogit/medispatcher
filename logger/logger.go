@@ -21,7 +21,7 @@ var logAsSingleFile bool
 
 var loggersWRLock = make(chan int, 1)
 
-var validLevels = []string{"INFO", "ERROR", "WARN", "DEFAULT", "DATA"}
+var validLevels = []string{"INFO", "ERROR", "WARN", "DEFAULT", "DATA", "DEBUG"}
 
 // DatetimeLogFileWriter log messages into datetime named files.
 type DatetimeLogFileWriter struct {
@@ -192,7 +192,7 @@ func (w *DatetimeLogFileWriter) flush(length int) error {
 	pathSep := string(os.PathSeparator)
 	var logFilename string
 	if logAsSingleFile {
-		logFilename = fmt.Sprintf("%s%sall.%s.log", strings.TrimRight(w.logDir, pathSep), pathSep, suffix)
+		logFilename = fmt.Sprintf("%s%s%s.log", strings.TrimRight(w.logDir, pathSep), pathSep, strings.ToLower(w.level))
 	} else {
 		logFilename = fmt.Sprintf("%s%s%s.%s.log", strings.TrimRight(w.logDir, pathSep), pathSep, strings.ToLower(w.level), suffix)
 	}

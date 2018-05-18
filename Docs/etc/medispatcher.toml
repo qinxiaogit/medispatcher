@@ -6,6 +6,9 @@ LOG_DIR="/var/log/medispatcher"
 
 DATA_DIR="/var/lib/medispatcher/"
 
+# 是否切分日志。true,则按天切分,否则每种类型的日志都写到同一个文件,可利用外部工具来进行切分,如logrotate.
+SplitLog=true
+
 # 消息(接收)处理者环境。如果有设置，则根据消息处理地址的T_ENV标签（若发现带标签的地址）进行选择处理地址。
 # 如: "PUB","STAG"
 # RECEPTION_ENV="PUB"
@@ -23,12 +26,13 @@ StatisticApiAddr="0.0.0.0:5606"
 PrometheusApiAddr="0.0.0.0:25606"
 
 # 队列服务器地址, 如beanstalkd的为 127.0.0.1:11300,127.0.0.1:11301
-QueueServerAddr="127.0.0.1:11300,127.0.0.1:11301"
+#QueueServerAddr="127.0.0.1:11300,127.0.0.1:11301"
+QueueServerAddr="127.0.0.1:11300"
 
 # 每个队列上连接池的消息监听连接数。
-QueueServerPoolListenConnCount=1
+QueueServerPoolListenConnCount=2
 # 每个队列上连接池的命令连接数。(用于发送除了监听之外的命令)
-QueueServerPoolCmdConnCount=1
+QueueServerPoolCmdConnCount=2
 
 
 NameOfMainQueue="event_center_messages"
@@ -40,13 +44,13 @@ EnableMsgSentLog=true
 
 
 # 主队列上消息分发并发数
-ListenersOfMainQueue=1
+ListenersOfMainQueue=5
 
 # 每个订阅允许的最大并发推送数
-MaxSendersPerChannel=2
+MaxSendersPerChannel=1500
 
 # 每个订阅(重试时)允许的最大并发推送数
-MaxSendersPerRetryChannel=1
+MaxSendersPerRetryChannel=60
 
 # 每个订阅默认的并发推送数
 SendersPerChannel=5
@@ -75,6 +79,8 @@ Port=3306
 User="dev"
 Password="jumeidevforall"
 DbName="jm_event"
+Options="readTimeout=20s&writeTimeout=20s"
+MaxConns=10
 
 [Redis]
 Addr="127.0.0.1:6379"
@@ -105,3 +111,25 @@ User="task"
 Password="key"
 Recipient = "num"
 Content = "content"
+
+[AlarmPlatform]
+Gateway="http://alarm.pub.jumei.com/interface/rest/api/v1/gateway/auth"
+User="EventServer"
+Password="9f53dd96a497b6db58b271eb73210434"
+
+[AlarmPlatform.PostFieldsMap]
+User="appkey"
+Password="token"
+#告警item所属项目，可自定义.
+project=""
+#告警item所属主机， 不填写默认为空.
+#host=""
+#告警item的邮件主题，不填写默认为“聚美统一告警平台报警通知”.
+Subject="title"
+#告警item的内容.
+Content="content"
+#报警接收人.
+Recipient="auth"
+# 1邮件 2短信 3微信.
+#type="00000111"
+

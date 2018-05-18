@@ -13,9 +13,12 @@ type SubscriptionParams struct {
 	IntervalOfSending  uint32
 	// Process timeout in milliseconds
 	// ProcessTimeout is significant. Many checks relies on it, 0 means it has not a customized params, all params are in default value.
-	ProcessTimeout      uint32
-	ReceptionUri        string
-	AlerterEmails       string
+	ProcessTimeout  uint32
+	ReceptionUri    string
+	AlerterEmails   string
+	AlerterReceiver string
+	// 是否接收压测环境消息.
+	ReceiveBenchMsgs    bool
 	AlerterPhoneNumbers string
 	AlerterEnabled      bool
 
@@ -37,9 +40,6 @@ func GetSubscriptionParamsById(subscriptionId int32) (sub SubscriptionParams, er
 	if err != nil {
 		return
 	}
-	defer func() {
-		db.Release()
-	}()
 	sqlStr := fmt.Sprintf(`SELECT param_name FROM %s
 	WHERE subscription_id=?
 	`, DB_TABLE_SUBSCRIPTION_PARAMS)
@@ -47,6 +47,7 @@ func GetSubscriptionParamsById(subscriptionId int32) (sub SubscriptionParams, er
 	if err != nil {
 		return
 	}
+	defer rows.Close()
 	sub.SubscriptionId = subscriptionId
 	var paramNames []string
 	var rowV *sql.Row
@@ -58,14 +59,12 @@ func GetSubscriptionParamsById(subscriptionId int32) (sub SubscriptionParams, er
 		}
 		paramNames = append(paramNames, paramName)
 	}
+	var noParam interface{}
 	for _, paramName := range paramNames {
 		sqlStr := fmt.Sprintf(`SELECT param_value FROM %s
 	WHERE subscription_id=? AND param_name=?
 	`, DB_TABLE_SUBSCRIPTION_PARAMS)
-		rowV, err = db.QueryRow(sqlStr, subscriptionId, paramName)
-		if err != nil {
-			return
-		}
+		rowV = db.QueryRow(sqlStr, subscriptionId, paramName)
 		switch paramName {
 		case "Concurrency":
 			err = rowV.Scan(&sub.Concurrency)
@@ -81,6 +80,10 @@ func GetSubscriptionParamsById(subscriptionId int32) (sub SubscriptionParams, er
 			err = rowV.Scan(&sub.AlerterEmails)
 		case "AlerterPhoneNumbers":
 			err = rowV.Scan(&sub.AlerterPhoneNumbers)
+		case "AlerterReceiver":
+			err = rowV.Scan(&sub.AlerterReceiver)
+		case "ReceiveBenchMsgs":
+			err = rowV.Scan(&sub.ReceiveBenchMsgs)
 		case "AlerterEnabled":
 			err = rowV.Scan(&sub.AlerterEnabled)
 		case "IntervalOfErrorMonitorAlert":
@@ -91,6 +94,9 @@ func GetSubscriptionParamsById(subscriptionId int32) (sub SubscriptionParams, er
 			err = rowV.Scan(&sub.SubscriptionTotalFailureAlertThreshold)
 		case "MessageBlockedAlertThreshold":
 			err = rowV.Scan(&sub.MessageBlockedAlertThreshold)
+		default:
+			// rowV必须被scan,避免row不能被关闭而占用连接。
+			rowV.Scan(&noParam)
 		}
 		if err != nil {
 			return

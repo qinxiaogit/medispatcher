@@ -6,14 +6,8 @@ const (
 )
 
 const (
-	// unit in seconds
-	DB_CONNECT_TIMEOUT = 3
-	// unit in seconds
-	DB_WR_TIMEOUT = 3
-
 	// maximum database connections
 	MAX_DB_CONNECTIONS                         = 10
-	MAX_RETRY_TIMES_ON_DB_CONNECTION_POOL_FULL = 10
 )
 
 const (
@@ -52,4 +46,7 @@ type MessageStuct struct {
 	LogId    uint64
 	Delay    uint64
 	Priority uint32
+
+	Context string
+	Owl_context string
 }

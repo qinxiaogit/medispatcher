@@ -29,6 +29,23 @@ func getRetryDelay(retryTimes uint16, coeOfIntervalForRetrySendingMsg uint16) fl
 	return math.Pow(float64(retryTimes), float64(2)) * float64(coeOfIntervalForRetrySendingMsg)
 }
 
+var subscriptionBenchCfg map[int32]bool = make(map[int32]bool)
+// 订阅是否接受压测消息(默认不接受).
+func ReceiveBenchMsgs(subscriptionId int32) bool {
+	if _, ok := subscriptionBenchCfg[subscriptionId]; ! ok {
+		subParams := NewSubscriptionParams()
+		err := subParams.Load(subscriptionId)
+		if err != nil {
+			logger.GetLogger("INFO").Printf("Failed to load subscription params: %v, ignore customized subscription performance params.", err)
+			return false
+		}
+
+		subscriptionBenchCfg[subscriptionId] = subParams.ReceiveBenchMsgs
+	}
+
+	return subscriptionBenchCfg[subscriptionId]
+}
+
 // SetSubscriptionParams changes the params that affects the sender routine performances.
 // This function is not go-routine safe. The invoker should implement go-routine safe calls.
 func SetSubscriptionParams(subscriptionId int32, param SubscriptionParams) error {
@@ -77,9 +94,35 @@ func SetSubscriptionParams(subscriptionId int32, param SubscriptionParams) error
 	if err == nil {
 		err = routineStatus.SetSubParam("AlerterPhoneNumbers", param.AlerterPhoneNumbers)
 	}
+
+	if err == nil {
+		err = routineStatus.SetSubParam("AlerterReceiver", param.AlerterReceiver)
+	}
+
+	if err == nil {
+		err = routineStatus.SetSubParam("ReceiveBenchMsgs", param.ReceiveBenchMsgs)
+	}
+	
 	if err == nil {
 		err = routineStatus.SetSubParam("AlerterEnabled", param.AlerterEnabled)
 	}
+
+	if err == nil {
+		err = routineStatus.SetSubParam("IntervalOfErrorMonitorAlert", param.IntervalOfErrorMonitorAlert)
+	}
+
+	if err == nil {
+		err = routineStatus.SetSubParam("SubscriptionTotalFailureAlertThreshold", param.SubscriptionTotalFailureAlertThreshold)
+	}
+
+	if err == nil {
+		err = routineStatus.SetSubParam("MessageFailureAlertThreshold", param.MessageFailureAlertThreshold)
+	}
+
+	if err == nil {
+		err = routineStatus.SetSubParam("MessageBlockedAlertThreshold", param.MessageBlockedAlertThreshold)
+	}
+	
 	if err != nil {
 		return err
 	}
@@ -133,5 +176,8 @@ func SetSubscriptionParams(subscriptionId int32, param SubscriptionParams) error
 	if err != nil {
 		logger.GetLogger("WARN").Printf("Failed to save subscription params for subscription: %v: %v", subscriptionId, err)
 	}
+
+	subscriptionBenchCfg[subscriptionId] = param.ReceiveBenchMsgs
+
 	return nil
 }

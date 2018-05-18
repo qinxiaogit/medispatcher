@@ -65,6 +65,23 @@ First release of v2.
  e.g. medispatcher /path/to/config/file
 * Multiple message processing worker url support. The urls can be multi-lined, each line represents a separate worker url. This achieves a soft load balance.
  
+### 2.3.1
+2.3.1 released(refers to the git tag). 
+
+#### Features
+* Added help commandline args.
+* Added version display commandline args.
+
+
+### 2.3.2
+2.3.2 released(refers to the git tag). 
+
+#### Features
+* Log files can be configured to a single file.
+* Added build date  to version info.
+* Version info contains build time. 
+ 
+ 
 ## Milestone
 
 ### 2.1.0
@@ -92,8 +109,35 @@ First release of v2.
 #### Fix
 * fixed un-handled buried messages on exits.
 * fixed service may not exits gracefully.
-  
+ 
+### 2.3.3
+2.3.3 released(refers to the git tag).    
+#### Enhancement 
+* stack will be logged when broker client encounter an error.
+#### Fix
+* fixed random subscription url will be used when no tagged env url are found. after this fixs, when tagged env has no subscription urls, the messages to the env will be dropped and issues a warning log. 
+ 
 ### 2.4.0
 #### Features
 
 * Messages sent/received statistics
+
+### 2.4.2
+#### Features
+
+* 接入统一告警平台.
+
+### 2.4.2.1
+#### Features
+
+* 支持对没有设置报警接收人的订阅添加默认报警接收人.
+
+### 2.4.2.3
+#### Features
+
+* 支持context上下文传递.
+
+### 2.4.3
+#### Features
+
+* 支持订阅方配置是否接收压测环境消息.

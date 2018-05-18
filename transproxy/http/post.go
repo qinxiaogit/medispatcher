@@ -11,6 +11,7 @@ import (
 	"compress/gzip"
 	"fmt"
 	"sync"
+	"encoding/json"
 )
 
 type clientInfo struct {
@@ -85,9 +86,58 @@ func init(){
 	}()
 }
 
+func TransferJSON(addr string, data map[string]string, timeout time.Duration) (httpStatusCode int, respData []byte, err error) {
+	var req *http.Request
+	reqData, err := json.Marshal(data)
+	if err != nil {
+		return 500, nil, err
+	}
+	req, err = http.NewRequest("POST", addr, strings.NewReader(string(reqData)))
+	fmt.Println(string(reqData))
+	if err != nil {
+		return
+	}
+	var client *http.Client
+	client, err = clients.get(addr, timeout)
+	if err != nil {
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "MEDipatcher/2.0.0-alpha")
+	req.Header.Set("Accept", "*/*")
+	req.Header.Set("Accept-Encoding", "gzip")
+	//req.Header.Set("Connection", "close")
+//	req.Header.Set("Keep-Alive", "300")
+	resp, err := client.Do(req)
+	if err != nil {
+		return
+	}
+	var reader io.ReadCloser
+	switch resp.Header.Get("Content-Encoding") {
+	case "gzip":
+		reader, _ = gzip.NewReader(resp.Body)
+	default:
+		reader = resp.Body
+	}
+	defer reader.Close()
+	httpStatusCode = resp.StatusCode
+	buffLen := 20
+	buff := make([]byte, buffLen)
+	for {
+		n, e := reader.Read(buff)
+		if n > 0 {
+			respData = append(respData, buff[0:n]...)
+		}
+		if e != nil {
+			break
+		}
+	}
+	return
+}
+
 // Transfer acts a http post request.
 // TODO: keep-alive on connection pool
-func Transfer(addr string, data map[string]string, timeout time.Duration) (httpStatusCode int, respData []byte, err error) {
+func Transfer(addr string, data map[string]string, headers map[string]string, timeout time.Duration) (httpStatusCode int, respData []byte, err error) {
 	reqData := url.Values{}
 	for k, v := range data {
 		reqData[k] = []string{v}
@@ -106,6 +156,15 @@ func Transfer(addr string, data map[string]string, timeout time.Duration) (httpS
 	req.Header.Set("User-Agent", "MEDipatcher/2.0.0-alpha")
 	req.Header.Set("Accept", "*/*")
 	req.Header.Set("Accept-Encoding", "gzip")
+
+	if _, ok := headers["context"]; ok {
+		req.Header.Set("X-Jumei-Context", headers["context"])
+	}
+
+	if _, ok := headers["owl_context"]; ok {
+		req.Header.Set("X-Jumei-Owl-Context", headers["owl_context"])
+	}
+
 	//req.Header.Set("Connection", "close")
 //	req.Header.Set("Keep-Alive", "300")
 	resp, err := client.Do(req)
