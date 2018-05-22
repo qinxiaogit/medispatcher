@@ -69,6 +69,25 @@ func (s *Statistics) channel(topic, c string) *Categorys {
 	return s.Data[topic][c]
 }
 
+// GC 清除0值的map
+func (s *Statistics) GC() {
+	s.Lock()
+	defer s.Unlock()
+
+	for topic, channels := range s.Data {
+		topicCount := len(channels)
+		for channel, data := range channels {
+			if data.Day == 0 {
+				topicCount--
+				delete(channels, channel)
+			}
+		}
+		if topicCount == 0 {
+			delete(s.Data, topic)
+		}
+	}
+}
+
 // Tick will 移动所有的topic下的所有channel的游标
 func (s *Statistics) Tick() (lastIndex uint) {
 	s.Lock()
