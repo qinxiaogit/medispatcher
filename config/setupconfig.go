@@ -14,7 +14,7 @@ import (
 var BuildTime       = "unknonw"
 
 const (
-	VerNo           = "2.4.3.1"
+	VerNo           = "2.4.3.2"
 	MAX_CONNECTIONS = 15000
 	// 客户端响应超时
 	CLIENT_TIMEOUT  = time.Second * 5
