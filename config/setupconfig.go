@@ -9,8 +9,6 @@ import (
 	"path"
 	"reflect"
 	"time"
-
-	l "github.com/sunreaver/gotools/logger"
 )
 
 var BuildTime = "unknonw"
@@ -71,9 +69,6 @@ func SetConfig(name string, val interface{}) {
 }
 
 func Setup() error {
-	defer func() {
-		l.LoggerByDay.Debugw("Setup", "Config", config)
-	}()
 
 	var err error
 	// 获取并解析配置文件

@@ -32,6 +32,7 @@ func main() {
 	}
 
 	l.InitLogger(config.GetConfig().LOG_DIR, l.DebugLevel, time.FixedZone("Asia/Shanghai", 8*3600))
+	l.LoggerByDay.Debugw("Setup", "Config", config.GetConfig())
 
 	go http.ListenAndServe(config.GetConfig().DebugAddr, nil)
 	maxProcs := runtime.NumCPU()
