@@ -24,13 +24,14 @@ import (
 var exitSigChan = make(chan bool)
 
 func main() {
-	l.InitLogger("/usr/local/sbin/", l.DebugLevel, time.FixedZone("Asia/Shanghai", 8*3600))
 
 	err := config.Setup()
 	if err != nil {
 		fmt.Printf("Failed to setup configs: %v", err)
 		os.Exit(1)
 	}
+
+	l.InitLogger(config.GetConfig().LOG_DIR, l.DebugLevel, time.FixedZone("Asia/Shanghai", 8*3600))
 
 	go http.ListenAndServe(config.GetConfig().DebugAddr, nil)
 	maxProcs := runtime.NumCPU()
