@@ -20,6 +20,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	l "github.com/sunreaver/gotools/logger"
 )
 
 var subHandlerWorkWg = new(sync.WaitGroup)
@@ -87,7 +89,6 @@ func handleSubscription(sub data.SubscriptionRecord) {
 		subParams:      subParams,
 	}
 	senderRoutineStats.addStatus(sub.Subscription_id, &sossr)
-
 
 	err := subParams.RefreshAndLoad(sub.Subscription_id)
 	if err != nil {
@@ -286,7 +287,7 @@ func sendSubscription(msgChan chan *Msg, sub data.SubscriptionRecord, sossr *Sta
 					}
 				}
 			}
-			if sentSuccess || sendUrl == ""{
+			if sentSuccess || sendUrl == "" {
 				// TODO: performance test for deleting messages.
 				deleteMessage(msgR)
 				if sendUrl == "" {
@@ -341,6 +342,9 @@ func sendSubscription(msgChan chan *Msg, sub data.SubscriptionRecord, sossr *Sta
 			}
 
 			if !sentSuccess && sossr.GetSubParams().AlerterEnabled {
+				l.LoggerByDay.Debugw("SendSubscription", "sossr", sossr.GetSubParams(),
+					"msg", msg)
+
 				senderErrorMonitor.addSubscriptionCheck(&sub, sossr.GetSubParams())
 				senderErrorMonitor.addMessageCheck(&sub, sossr.GetSubParams(), logId, errMsgInSending, 1)
 			}
@@ -495,6 +499,8 @@ func sendSubscriptionAsRetry(msgChan chan *Msg, sub data.SubscriptionRecord, sos
 				}
 			}
 			if !sentSuccess && sossr.GetSubParams().AlerterEnabled {
+				l.LoggerByDay.Debugw("SendSubscriptionAsRetry", "sossr", sossr.GetSubParams(),
+					"msg", msg)
 				senderErrorMonitor.addSubscriptionCheck(&sub, sossr.GetSubParams())
 				senderErrorMonitor.addMessageCheck(&sub, sossr.GetSubParams(), msg.LogId, errMsgInSending, msg.RetryTimes)
 			}

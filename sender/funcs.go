@@ -30,9 +30,10 @@ func getRetryDelay(retryTimes uint16, coeOfIntervalForRetrySendingMsg uint16) fl
 }
 
 var subscriptionBenchCfg map[int32]bool = make(map[int32]bool)
+
 // 订阅是否接受压测消息(默认不接受).
 func ReceiveBenchMsgs(subscriptionId int32) bool {
-	if _, ok := subscriptionBenchCfg[subscriptionId]; ! ok {
+	if _, ok := subscriptionBenchCfg[subscriptionId]; !ok {
 		subParams := NewSubscriptionParams()
 		err := subParams.Load(subscriptionId)
 		if err != nil {
@@ -102,7 +103,7 @@ func SetSubscriptionParams(subscriptionId int32, param SubscriptionParams) error
 	if err == nil {
 		err = routineStatus.SetSubParam("ReceiveBenchMsgs", param.ReceiveBenchMsgs)
 	}
-	
+
 	if err == nil {
 		err = routineStatus.SetSubParam("AlerterEnabled", param.AlerterEnabled)
 	}
@@ -122,7 +123,11 @@ func SetSubscriptionParams(subscriptionId int32, param SubscriptionParams) error
 	if err == nil {
 		err = routineStatus.SetSubParam("MessageBlockedAlertThreshold", param.MessageBlockedAlertThreshold)
 	}
-	
+
+	if err == nil {
+		err = routineStatus.SetSubParam("AlarmInterval", param.AlarmInterval)
+	}
+
 	if err != nil {
 		return err
 	}

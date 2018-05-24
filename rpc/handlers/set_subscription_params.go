@@ -83,7 +83,7 @@ func (i SetSubscriptionParams) Process(args map[string]interface{}) (re interfac
 				} else {
 					v = uint32(vf)
 				}
-			case "IntervalOfErrorMonitorAlert":
+			case "IntervalOfErrorMonitorAlert", "MessageBlockedAlertThreshold", "AlarmInterval":
 				if vf, ok := v.(float64); !ok {
 					err = fmt.Errorf("Param type error expecting: float/int: %s: %v", n, v)
 					return
@@ -103,13 +103,6 @@ func (i SetSubscriptionParams) Process(args map[string]interface{}) (re interfac
 					return
 				} else {
 					v = int32(vf)
-				}
-			case "MessageBlockedAlertThreshold":
-				if vf, ok := v.(float64); !ok {
-					err = fmt.Errorf("Param type error expecting: float/int: %s: %v", n, v)
-					return
-				} else {
-					v = int64(vf)
 				}
 			}
 			rElemField.Set(reflect.ValueOf(v))

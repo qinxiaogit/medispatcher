@@ -25,7 +25,9 @@ func Add(mq MessageQueue, count int) {
 	if mq == nil {
 		return
 	}
-	poolData.push(mq)
+	for i := 0; i < count; i++ {
+		poolData.push(mq)
+	}
 }
 
 // ShowData will 返回当前统计数据

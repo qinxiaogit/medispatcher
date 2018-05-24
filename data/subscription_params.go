@@ -22,6 +22,8 @@ type SubscriptionParams struct {
 	AlerterPhoneNumbers string
 	AlerterEnabled      bool
 
+	// 报警间隔，单位: 秒，默认180秒
+	AlarmInterval int64
 	// 错误次数计数间隔，单位: 秒，默认180秒
 	IntervalOfErrorMonitorAlert int64
 	// 发送失败阈值: 0<n<10，默认7次
@@ -94,6 +96,8 @@ func GetSubscriptionParamsById(subscriptionId int32) (sub SubscriptionParams, er
 			err = rowV.Scan(&sub.SubscriptionTotalFailureAlertThreshold)
 		case "MessageBlockedAlertThreshold":
 			err = rowV.Scan(&sub.MessageBlockedAlertThreshold)
+		case "AlarmInterval":
+			err = rowV.Scan(&sub.AlarmInterval)
 		default:
 			// rowV必须被scan,避免row不能被关闭而占用连接。
 			rowV.Scan(&noParam)

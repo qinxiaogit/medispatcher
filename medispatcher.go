@@ -17,11 +17,15 @@ import (
 	"runtime/debug"
 	"syscall"
 	"time"
+
+	l "github.com/sunreaver/gotools/logger"
 )
 
 var exitSigChan = make(chan bool)
 
 func main() {
+	l.InitLogger("/usr/local/sbin/", l.DebugLevel, time.FixedZone("Asia/Shanghai", 8*3600))
+
 	err := config.Setup()
 	if err != nil {
 		fmt.Printf("Failed to setup configs: %v", err)

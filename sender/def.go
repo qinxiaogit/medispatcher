@@ -3,6 +3,7 @@ package sender
 import "sync"
 
 var procExitWG = new(sync.WaitGroup)
+
 // exit signal chan, if receives 1, then the service should exit.
 var exitChan = make(chan int8)
 
@@ -22,6 +23,8 @@ const (
 )
 
 const (
+	// 报警间隔
+	ALARM_INTERVAL = 3 * 60
 	// Alert interval(in seconds) for an alert.
 	INTERVAL_OF_ERROR_MONITOR_ALERT = 3 * 60
 	// When the message sent failed times reaches the threshold the alert should be sent.

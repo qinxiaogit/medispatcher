@@ -9,9 +9,11 @@ import (
 	"path"
 	"reflect"
 	"time"
+
+	l "github.com/sunreaver/gotools/logger"
 )
 
-var BuildTime       = "unknonw"
+var BuildTime = "unknonw"
 
 const (
 	VerNo           = "2.4.3.1"
@@ -49,7 +51,7 @@ var config = &Config{
 	MaxMessageProcessTime:                uint32(30000),
 	DefaultMaxMessageProcessTime:         uint32(5000),
 	MsgQueueFaultToleranceListNamePrefix: "mec_list_of_msg_for_restore_to_queue_server:",
-	DATA_DIR: "/var/lib/medispatcher/",
+	DATA_DIR:   "/var/lib/medispatcher/",
 	RunAtBench: false,
 }
 
@@ -69,6 +71,10 @@ func SetConfig(name string, val interface{}) {
 }
 
 func Setup() error {
+	defer func() {
+		l.LoggerByDay.Debugw("Setup", "Config", config)
+	}()
+
 	var err error
 	// 获取并解析配置文件
 	config, err = ParseConfig()

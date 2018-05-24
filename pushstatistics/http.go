@@ -1,6 +1,7 @@
 package pushstatistics
 
 import (
+	"encoding/json"
 	"fmt"
 	"medispatcher/config"
 	"medispatcher/logger"
@@ -11,6 +12,7 @@ import (
 func httpRun() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/prometheus/pushstatistics", GetPushStatistics)
+	mux.HandleFunc("/pushstatistics/alldata", GetPushStatisticsAllData)
 	e := http.ListenAndServe(config.GetConfig().PrometheusApiAddr, mux)
 	if e != nil {
 		panic("pushstatistics http serve start error: " + e.Error())
@@ -34,6 +36,30 @@ func GetPushStatistics(w http.ResponseWriter, req *http.Request) {
 
 	out := makePrometheusFormat(ShowData(), req.URL.Query().Get("nozero") == "true")
 	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(out))
+	return
+}
+
+// GetPushStatisticsAllData will 获取当前推送全量数据统计
+func GetPushStatisticsAllData(w http.ResponseWriter, req *http.Request) {
+	defer func() {
+		if e := recover(); e != nil {
+			logger.GetLogger("ERROR").Printf("GetPushStatisticsAllData: %v", e)
+		}
+	}()
+
+	var e error
+	var out []byte
+	if req.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		out = []byte(http.StatusText(http.StatusMethodNotAllowed))
+	} else if out, e = json.Marshal(ShowData()); e != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		out = []byte(e.Error())
+	} else {
+		w.WriteHeader(http.StatusOK)
+	}
+
 	w.Write([]byte(out))
 	return
 }

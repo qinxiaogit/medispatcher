@@ -19,6 +19,7 @@ func NewSubscriptionParams() *SubscriptionParams {
 			Concurrency:                            config.GetConfig().SendersPerChannel,
 			ConcurrencyOfRetry:                     config.GetConfig().SendersPerRetryChannel,
 			IntervalOfSending:                      config.GetConfig().IntervalOfSendingForSendRoutine,
+			AlarmInterval:                          ALARM_INTERVAL,
 			IntervalOfErrorMonitorAlert:            INTERVAL_OF_ERROR_MONITOR_ALERT,
 			MessageFailureAlertThreshold:           MESSAGE_FAILURE_ALERT_THRESHOLD,
 			SubscriptionTotalFailureAlertThreshold: SUBSCRIPTION_TOTAL_FAILURE_ALERT_THRESHOLD,
@@ -40,6 +41,9 @@ func (sp *SubscriptionParams) fixAlertOption() {
 	}
 	if sp.MessageBlockedAlertThreshold <= 0 {
 		sp.MessageBlockedAlertThreshold = MESSAGE_BLOCKED_ALERT_THRESHOLD
+	}
+	if sp.AlarmInterval <= 0 {
+		sp.AlarmInterval = ALARM_INTERVAL
 	}
 }
 
