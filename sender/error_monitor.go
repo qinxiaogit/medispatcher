@@ -111,7 +111,8 @@ func (em *errorMonitor) addSubscriptionCheck(sub *data.SubscriptionRecord, subPa
 			reCount = true
 		} else {
 			l.LoggerByDay.Debugw("ShouldAlert No addSubscriptionCheck",
-				"sc.errorSum", subParam.SubscriptionTotalFailureAlertThreshold)
+				"sc.errorSum", sc.errorSum,
+				"subParam.SubscriptionTotalFailureAlertThreshold", subParam.SubscriptionTotalFailureAlertThreshold)
 		}
 	} else {
 		l.LoggerByDay.Debugw("ShouldAlert No addSubscriptionCheck",
@@ -157,6 +158,8 @@ func (em *errorMonitor) addSubscriptionCheck(sub *data.SubscriptionRecord, subPa
 		em.alerterEmail.Alert(alert)
 
 		sentAlarm = true
+		l.LoggerByDay.Debugw("ShouldAlert addMessageCheck",
+			"send AlerterEmails", subParam.AlerterEmails)
 	}
 
 	if em.alerterSms != nil && subParam.AlerterPhoneNumbers != "" {
@@ -165,6 +168,8 @@ func (em *errorMonitor) addSubscriptionCheck(sub *data.SubscriptionRecord, subPa
 		em.alerterSms.Alert(alert)
 
 		sentAlarm = true
+		l.LoggerByDay.Debugw("ShouldAlert addMessageCheck",
+			"send AlerterPhoneNumbers", subParam.AlerterPhoneNumbers)
 	}
 
 	if em.alarmPlatform != nil && subParam.AlerterReceiver != "" {
@@ -174,17 +179,18 @@ func (em *errorMonitor) addSubscriptionCheck(sub *data.SubscriptionRecord, subPa
 		em.alarmPlatform.Alert(alert)
 
 		sentAlarm = true
+		l.LoggerByDay.Debugw("ShouldAlert addMessageCheck",
+			"send AlerterReceiver", subParam.AlerterReceiver)
 	}
 
 	l.LoggerByDay.Debugw("ShouldAlert addSubscriptionCheck",
+		"send", sentAlarm,
 		"Subscriber_id", sub.Subscriber_id,
 		"Class_key", sub.Class_key,
 		"IntervalOfErrorMonitorAlert", subParam.IntervalOfErrorMonitorAlert,
 		"errorSum", errorSum,
 		"Subscription_id", sub.Subscription_id,
-		"alerterEmail", em.alerterEmail,
 		"AlerterEmails", subParam.AlerterEmails,
-		"alerterSms", em.alerterSms,
 		"AlerterPhoneNumbers", subParam.AlerterPhoneNumbers,
 		"alarmPlatform", em.alarmPlatform,
 		"AlerterReceiver", subParam.AlerterReceiver,
@@ -276,6 +282,9 @@ func (em *errorMonitor) addMessageCheck(sub *data.SubscriptionRecord, subParam S
 		em.alerterEmail.Alert(alert)
 
 		sentAlarm = true
+
+		l.LoggerByDay.Debugw("ShouldAlert addMessageCheck",
+			"send AlerterEmails", subParam.AlerterEmails)
 	}
 	alert.Content = smsMsg
 	if em.alerterSms != nil && subParam.AlerterPhoneNumbers != "" {
@@ -284,6 +293,8 @@ func (em *errorMonitor) addMessageCheck(sub *data.SubscriptionRecord, subParam S
 		em.alerterSms.Alert(alert)
 
 		sentAlarm = true
+		l.LoggerByDay.Debugw("ShouldAlert addMessageCheck",
+			"send AlerterPhoneNumbers", subParam.AlerterPhoneNumbers)
 	}
 
 	if em.alarmPlatform != nil && subParam.AlerterReceiver != "" {
@@ -293,17 +304,19 @@ func (em *errorMonitor) addMessageCheck(sub *data.SubscriptionRecord, subParam S
 		em.alarmPlatform.Alert(alert)
 
 		sentAlarm = true
+
+		l.LoggerByDay.Debugw("ShouldAlert addMessageCheck",
+			"send AlerterReceiver", subParam.AlerterReceiver)
 	}
 
 	l.LoggerByDay.Debugw("ShouldAlert addMessageCheck",
+		"send", sentAlarm,
 		"Subscriber_id", sub.Subscriber_id,
 		"Class_key", sub.Class_key,
 		"IntervalOfErrorMonitorAlert", subParam.IntervalOfErrorMonitorAlert,
 		"errorSum", errorTimes,
 		"Subscription_id", sub.Subscription_id,
-		"alerterEmail", em.alerterEmail,
 		"AlerterEmails", subParam.AlerterEmails,
-		"alerterSms", em.alerterSms,
 		"AlerterPhoneNumbers", subParam.AlerterPhoneNumbers,
 		"alarmPlatform", em.alarmPlatform,
 		"AlerterReceiver", subParam.AlerterReceiver,

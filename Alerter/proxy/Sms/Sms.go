@@ -3,12 +3,14 @@ package Sms
 
 import (
 	"errors"
+	"fmt"
 	"medispatcher/Alerter"
 	transproxy "medispatcher/transproxy/http"
 	"regexp"
 	"strings"
 	"time"
-	"fmt"
+
+	l "github.com/sunreaver/gotools/logger"
 )
 
 type Sms struct {
@@ -24,15 +26,15 @@ func (proxy *Sms) Close() error {
 }
 
 func (proxy *Sms) Config(cfg Alerter.Config) error {
-	if !proxy.IsValidGateWay(cfg.Gateway){
+	if !proxy.IsValidGateWay(cfg.Gateway) {
 		return errors.New("Invalid gateway string")
 	}
 	proxy.cfg = cfg
 	return nil
 }
 
-func (proxy *Sms) GetConfig()*Alerter.Config{
-	return  &proxy.cfg
+func (proxy *Sms) GetConfig() *Alerter.Config {
+	return &proxy.cfg
 }
 
 func (proxy *Sms) IsValidGateWay(gateway string) bool {
@@ -45,13 +47,19 @@ func (proxy *Sms) IsValidPhoneNumber(phoneNum string) bool {
 	return valid
 }
 
-func (proxy *Sms) Send(alm Alerter.Alert) error {
+func (proxy *Sms) Send(alm Alerter.Alert) (err error) {
+	defer func() {
+		l.GetSugarLogger("alerter.log").Debugw("Send sms",
+			"proxy", proxy,
+			"error", err)
+	}()
+
 	recipients := strings.Split(alm.Recipient, ",")
 	sErr := []string{}
 	for _, recipient := range recipients {
 		alm.Recipient = recipient
 		if !proxy.IsValidPhoneNumber(recipient) {
-			sErr = append(sErr, "Invalid phone number: '"+recipient + "'")
+			sErr = append(sErr, "Invalid phone number: '"+recipient+"'")
 			continue
 		}
 		httpCode, resp, err := transproxy.Transfer(proxy.cfg.Gateway, proxy.packRequestData(&alm), nil, time.Millisecond*DEFAULT_TRANSPORT_TIMEOUT)

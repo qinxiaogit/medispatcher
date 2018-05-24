@@ -3,12 +3,14 @@ package Email
 
 import (
 	"errors"
+	"fmt"
 	"medispatcher/Alerter"
 	transproxy "medispatcher/transproxy/http"
 	"regexp"
 	"strings"
 	"time"
-	"fmt"
+
+	l "github.com/sunreaver/gotools/logger"
 )
 
 type Email struct {
@@ -24,15 +26,15 @@ func (proxy *Email) Close() error {
 }
 
 func (proxy *Email) Config(cfg Alerter.Config) error {
-	if !proxy.IsValidGateWay(cfg.Gateway){
+	if !proxy.IsValidGateWay(cfg.Gateway) {
 		return errors.New("Invalid gateway string")
 	}
 	proxy.cfg = cfg
 	return nil
 }
 
-func (proxy *Email) GetConfig()*Alerter.Config{
-	return  &proxy.cfg
+func (proxy *Email) GetConfig() *Alerter.Config {
+	return &proxy.cfg
 }
 
 func (proxy *Email) IsValidGateWay(gateway string) bool {
@@ -45,12 +47,17 @@ func (proxy *Email) IsValidEmail(email string) bool {
 	return valid
 }
 
-func (proxy *Email) Send(alm Alerter.Alert) error {
+func (proxy *Email) Send(alm Alerter.Alert) (err error) {
+	defer func() {
+		l.GetSugarLogger("alerter.log").Debugw("Send email",
+			"proxy", proxy,
+			"error", err)
+	}()
 	recipients := strings.Split(alm.Recipient, ",")
 	sErr := []string{}
 	for _, recipient := range recipients {
 		if !proxy.IsValidEmail(recipient) {
-			sErr = append(sErr, "Invalid email recipient: '"+recipient + "'")
+			sErr = append(sErr, "Invalid email recipient: '"+recipient+"'")
 			continue
 		}
 		alm.Recipient = recipient
