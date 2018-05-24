@@ -85,6 +85,8 @@ func (em *errorMonitor) addSubscriptionCheck(sub *data.SubscriptionRecord, subPa
 	if (em.alerterSms == nil || subParam.AlerterPhoneNumbers == "") && (em.alerterSms == nil || subParam.AlerterEmails == "") && (em.alarmPlatform == nil || subParam.AlerterReceiver == "") {
 		// 同时也无法使用默认报警.
 		if em.alarmPlatform == nil || config.GetConfig().DefaultAlarmReceiver == "" || config.GetConfig().DefaultAlarmChan == "" {
+			l.LoggerByDay.Debugw("ShouldAlert No addSubscriptionCheck",
+				"why", "no reciver")
 			return
 		}
 	}
@@ -107,7 +109,14 @@ func (em *errorMonitor) addSubscriptionCheck(sub *data.SubscriptionRecord, subPa
 		if sc.errorSum > subParam.SubscriptionTotalFailureAlertThreshold {
 			shouldAlert = true
 			reCount = true
+		} else {
+			l.LoggerByDay.Debugw("ShouldAlert No addSubscriptionCheck",
+				"sc.errorSum", subParam.SubscriptionTotalFailureAlertThreshold)
 		}
+	} else {
+		l.LoggerByDay.Debugw("ShouldAlert No addSubscriptionCheck",
+			"currentTime-sc.lastAlertTime", currentTime-sc.lastAlertTime,
+			"subParam.AlarmInterval", subParam.AlarmInterval)
 	}
 	if currentTime-sc.errorCountStartTime > subParam.IntervalOfErrorMonitorAlert {
 		// re-count the failures, if the last error occured long ago.
@@ -167,7 +176,8 @@ func (em *errorMonitor) addSubscriptionCheck(sub *data.SubscriptionRecord, subPa
 		sentAlarm = true
 	}
 
-	l.LoggerByDay.Debugw("ShouldAlert", "Subscriber_id", sub.Subscriber_id,
+	l.LoggerByDay.Debugw("ShouldAlert addSubscriptionCheck",
+		"Subscriber_id", sub.Subscriber_id,
 		"Class_key", sub.Class_key,
 		"IntervalOfErrorMonitorAlert", subParam.IntervalOfErrorMonitorAlert,
 		"errorSum", errorSum,
@@ -192,11 +202,16 @@ func (em *errorMonitor) addSubscriptionCheck(sub *data.SubscriptionRecord, subPa
 
 func (em *errorMonitor) addMessageCheck(sub *data.SubscriptionRecord, subParam SubscriptionParams, logId uint64, lastErrorString string, errorTimes uint16) {
 	if errorTimes < subParam.MessageFailureAlertThreshold {
+		l.LoggerByDay.Debugw("ShouldAlert No addMessageCheck",
+			"errorTimes", errorTimes,
+			"subParam.MessageFailureAlertThreshold", subParam.MessageFailureAlertThreshold)
 		return
 	}
 	if (em.alerterSms == nil || subParam.AlerterPhoneNumbers == "") && (em.alerterSms == nil || subParam.AlerterEmails == "") && (em.alarmPlatform == nil || subParam.AlerterReceiver == "") {
 		// 同时也无法使用默认报警.
 		if em.alarmPlatform == nil || config.GetConfig().DefaultAlarmReceiver == "" || config.GetConfig().DefaultAlarmChan == "" {
+			l.LoggerByDay.Debugw("ShouldAlert No addMessageCheck",
+				"why", "no receiver")
 			return
 		}
 	}
@@ -214,6 +229,9 @@ func (em *errorMonitor) addMessageCheck(sub *data.SubscriptionRecord, subParam S
 		em.mcLock.Unlock()
 	} else {
 		em.mcLock.Unlock()
+		l.LoggerByDay.Debugw("ShouldAlert No addMessageCheck",
+			"currentTime-mc.lastAlertTime", currentTime-mc.lastAlertTime,
+			"subParam.AlarmInterval", subParam.AlarmInterval)
 		return
 	}
 	var delay float64
@@ -277,7 +295,8 @@ func (em *errorMonitor) addMessageCheck(sub *data.SubscriptionRecord, subParam S
 		sentAlarm = true
 	}
 
-	l.LoggerByDay.Debugw("ShouldAlert", "Subscriber_id", sub.Subscriber_id,
+	l.LoggerByDay.Debugw("ShouldAlert addMessageCheck",
+		"Subscriber_id", sub.Subscriber_id,
 		"Class_key", sub.Class_key,
 		"IntervalOfErrorMonitorAlert", subParam.IntervalOfErrorMonitorAlert,
 		"errorSum", errorTimes,
