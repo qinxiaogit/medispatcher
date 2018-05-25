@@ -1,6 +1,7 @@
 package AlarmPlatform
 
 import (
+	"encoding/json"
 	"errors"
 	"medispatcher/Alerter"
 	transproxy "medispatcher/transproxy/http"
@@ -50,7 +51,8 @@ func (proxy *AlarmPlatform) IsValidPhoneNumber(phoneNum string) bool {
 func (proxy *AlarmPlatform) Send(alm Alerter.Alert) (err error) {
 	defer func() {
 		l.GetSugarLogger("alerter.log").Debugw("Send platform",
-			"proxy", proxy,
+			"success", err == nil,
+			"Alert", alm,
 			"error", err)
 	}()
 
@@ -73,7 +75,12 @@ func (proxy *AlarmPlatform) Send(alm Alerter.Alert) (err error) {
 		} else if httpCode != 200 {
 			sErr = append(sErr, fmt.Sprintf("Failed to send alert  by email: gateway error: %v ", httpCode))
 		} else if proxy.cfg.AckStr != string(resp) {
-			sErr = append(sErr, "Gateway response '"+string(resp)+"' is not as exepected '"+proxy.cfg.AckStr+"'.")
+			var pResp PlatformResp
+			if err = json.Unmarshal(resp, &pResp); err != nil {
+				sErr = append(sErr, "Gateway response '"+string(resp)+"' is wrong format. ")
+			} else if pResp.Code != "0" {
+				sErr = append(sErr, fmt.Sprintf("Gateway response '%v' code is not \"0\"", pResp))
+			}
 		}
 	}
 
