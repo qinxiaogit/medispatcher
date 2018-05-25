@@ -116,7 +116,9 @@ func (em *errorMonitor) addSubscriptionCheck(sub *data.SubscriptionRecord, subPa
 		} else {
 			l.LoggerByDay.Debugw("ShouldAlert No addSubscriptionCheck",
 				"sc.errorSum", sc.errorSum,
-				"subParam.SubscriptionTotalFailureAlertThreshold", subParam.SubscriptionTotalFailureAlertThreshold)
+				"subParam.SubscriptionTotalFailureAlertThreshold", subParam.SubscriptionTotalFailureAlertThreshold,
+				"currentTime-sc.errorCountStartTime", currentTime-sc.errorCountStartTime,
+				"subParam.IntervalOfErrorMonitorAlert", subParam.IntervalOfErrorMonitorAlert)
 		}
 	} else {
 		l.LoggerByDay.Debugw("ShouldAlert No addSubscriptionCheck",
