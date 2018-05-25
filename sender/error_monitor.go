@@ -91,6 +91,7 @@ func (em *errorMonitor) addSubscriptionCheck(sub *data.SubscriptionRecord, subPa
 		}
 	}
 	em.scLock.Lock()
+	currentTime := time.Now().Unix()
 	sc, ok := em.checkPoints.subscriptions[sub.Subscription_id]
 	if !ok {
 		sc = errorSubscriptionCheck{
@@ -98,17 +99,20 @@ func (em *errorMonitor) addSubscriptionCheck(sub *data.SubscriptionRecord, subPa
 			errorSum:            1,
 			errorCountStartTime: time.Now().Unix(),
 		}
+	} else if currentTime-sc.errorCountStartTime > subParam.IntervalOfErrorMonitorAlert {
+		// 超出时间窗口
+		sc.errorSum = 1
+		sc.errorCountStartTime = currentTime
 	} else {
 		sc.errorSum++
 	}
+
 	errorSum := sc.errorSum
-	var shouldAlert, reCount bool
-	currentTime := time.Now().Unix()
+	var shouldAlert bool
 	if currentTime-sc.lastAlertTime > subParam.AlarmInterval {
 		// to many failures in the specified period, should alert.
-		if sc.errorSum > subParam.SubscriptionTotalFailureAlertThreshold {
+		if sc.errorSum >= subParam.SubscriptionTotalFailureAlertThreshold {
 			shouldAlert = true
-			reCount = true
 		} else {
 			l.LoggerByDay.Debugw("ShouldAlert No addSubscriptionCheck",
 				"sc.errorSum", sc.errorSum,
@@ -117,22 +121,16 @@ func (em *errorMonitor) addSubscriptionCheck(sub *data.SubscriptionRecord, subPa
 	} else {
 		l.LoggerByDay.Debugw("ShouldAlert No addSubscriptionCheck",
 			"currentTime-sc.lastAlertTime", currentTime-sc.lastAlertTime,
-			"subParam.AlarmInterval", subParam.AlarmInterval)
-	}
-	if currentTime-sc.errorCountStartTime > subParam.IntervalOfErrorMonitorAlert {
-		// re-count the failures, if the last error occured long ago.
-		reCount = true
+			"subParam.AlarmInterval", subParam.AlarmInterval,
+			"errorSum", sc.errorSum,
+			"subParam.SubscriptionTotalFailureAlertThreshold", subParam.SubscriptionTotalFailureAlertThreshold)
 	}
 
 	// alert is to be sent, reset the stats.
 	if shouldAlert {
-		sc.errorCountStartTime = currentTime
 		sc.lastAlertTime = currentTime
 	}
-	if reCount {
-		sc.errorCountStartTime = currentTime
-		sc.errorSum = 1
-	}
+
 	em.checkPoints.subscriptions[sub.Subscription_id] = sc
 	em.scLock.Unlock()
 	if !shouldAlert {
@@ -158,7 +156,7 @@ func (em *errorMonitor) addSubscriptionCheck(sub *data.SubscriptionRecord, subPa
 		em.alerterEmail.Alert(alert)
 
 		sentAlarm = true
-		l.LoggerByDay.Debugw("ShouldAlert addMessageCheck",
+		l.LoggerByDay.Debugw("ShouldAlert addSubscriptionCheck",
 			"send AlerterEmails", subParam.AlerterEmails)
 	}
 
@@ -168,7 +166,7 @@ func (em *errorMonitor) addSubscriptionCheck(sub *data.SubscriptionRecord, subPa
 		em.alerterSms.Alert(alert)
 
 		sentAlarm = true
-		l.LoggerByDay.Debugw("ShouldAlert addMessageCheck",
+		l.LoggerByDay.Debugw("ShouldAlert addSubscriptionCheck",
 			"send AlerterPhoneNumbers", subParam.AlerterPhoneNumbers)
 	}
 
@@ -179,7 +177,7 @@ func (em *errorMonitor) addSubscriptionCheck(sub *data.SubscriptionRecord, subPa
 		em.alarmPlatform.Alert(alert)
 
 		sentAlarm = true
-		l.LoggerByDay.Debugw("ShouldAlert addMessageCheck",
+		l.LoggerByDay.Debugw("ShouldAlert addSubscriptionCheck",
 			"send AlerterReceiver", subParam.AlerterReceiver)
 	}
 
@@ -237,7 +235,9 @@ func (em *errorMonitor) addMessageCheck(sub *data.SubscriptionRecord, subParam S
 		em.mcLock.Unlock()
 		l.LoggerByDay.Debugw("ShouldAlert No addMessageCheck",
 			"currentTime-mc.lastAlertTime", currentTime-mc.lastAlertTime,
-			"subParam.AlarmInterval", subParam.AlarmInterval)
+			"subParam.AlarmInterval", subParam.AlarmInterval,
+			"errorTimes", errorTimes,
+			"subParam.MessageFailureAlertThreshold", subParam.MessageFailureAlertThreshold)
 		return
 	}
 	var delay float64
