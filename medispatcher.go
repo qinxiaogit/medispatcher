@@ -31,7 +31,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	l.InitLogger(config.GetConfig().LOG_DIR, l.DebugLevel, time.FixedZone("Asia/Shanghai", 8*3600))
+	l.InitLogger(config.GetConfig().LOG_DIR, l.InfoLevel, time.FixedZone("Asia/Shanghai", 8*3600))
 	l.LoggerByDay.Debugw("Setup", "Config", config.GetConfig())
 
 	go http.ListenAndServe(config.GetConfig().DebugAddr, nil)
