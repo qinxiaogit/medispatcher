@@ -10,7 +10,8 @@ var (
 	statistics *Statistics
 )
 
-func init() {
+// PrometheusStatisticsStart PrometheusStatisticsStart
+func PrometheusStatisticsStart() {
 	poolData = NewMQList()
 	statistics = &Statistics{
 		Len:  86400, // 1day

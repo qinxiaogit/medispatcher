@@ -6,6 +6,7 @@ import (
 	"medispatcher/config"
 	"medispatcher/logger"
 	"medispatcher/msgredist"
+	"medispatcher/pushstatistics"
 	"medispatcher/recoverwatcher"
 	rpcSrv "medispatcher/rpc/connection"
 	"medispatcher/sender"
@@ -33,6 +34,9 @@ func main() {
 
 	l.InitLogger(config.GetConfig().LOG_DIR, l.InfoLevel, time.FixedZone("Asia/Shanghai", 8*3600))
 	l.LoggerByDay.Debugw("Setup", "Config", config.GetConfig())
+
+	// 启动prometheus统计功能
+	pushstatistics.PrometheusStatisticsStart()
 
 	go http.ListenAndServe(config.GetConfig().DebugAddr, nil)
 	maxProcs := runtime.NumCPU()
