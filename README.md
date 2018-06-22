@@ -141,3 +141,8 @@ First release of v2.
 #### Features
 
 * 支持订阅方配置是否接收压测环境消息.
+
+### 2.4.3.3
+#### Features
+
+* 支持通过sendmail发送邮件(AlerterEmail.Gateway="sendmail://")

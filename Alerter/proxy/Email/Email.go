@@ -11,6 +11,8 @@ import (
 	"time"
 
 	l "github.com/sunreaver/gotools/logger"
+	"bytes"
+	"os/exec"
 )
 
 type Email struct {
@@ -53,6 +55,22 @@ func (proxy *Email) Send(alm Alerter.Alert) (err error) {
 			"proxy", proxy,
 			"error", err)
 	}()
+
+	// 要求使用sendmail发送邮件.
+	if proxy.cfg.Gateway == "sendmail://" {
+		out := bytes.Buffer{}
+		cmd := exec.Command("mail", "-s", alm.Subject, "-t", alm.Recipient)
+		cmd.Stdin = bytes.NewReader([]byte(alm.Content))
+		cmd.Stdout = &out
+		cmd.Stderr = &out
+		err = cmd.Run()
+		if err != nil {
+			return errors.New(fmt.Sprintf("Error ocurred: %s, response: %s", err.Error(), out.String()))
+		}
+
+		return nil
+	}
+
 	recipients := strings.Split(alm.Recipient, ",")
 	sErr := []string{}
 	for _, recipient := range recipients {
