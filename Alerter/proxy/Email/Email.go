@@ -58,6 +58,10 @@ func (proxy *Email) Send(alm Alerter.Alert) (err error) {
 
 	// 要求使用sendmail发送邮件.
 	if proxy.cfg.Gateway == "sendmail://" {
+		if strings.TrimSpace(alm.Recipient) == "" {
+			return nil;
+		}
+		
 		out := bytes.Buffer{}
 		cmd := exec.Command("mail", "-s", alm.Subject, "-t", alm.Recipient)
 		cmd.Stdin = bytes.NewReader([]byte(alm.Content))
