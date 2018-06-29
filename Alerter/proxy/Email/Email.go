@@ -13,6 +13,7 @@ import (
 	l "github.com/sunreaver/gotools/logger"
 	"bytes"
 	"os/exec"
+	"os"
 )
 
 type Email struct {
@@ -65,12 +66,15 @@ func (proxy *Email) Send(alm Alerter.Alert) (err error) {
 		if strings.TrimSpace(alm.Recipient) == "" {
 			return nil;
 		}
+
+		os.Setenv("LANG", "en_US.UTF-8")
 		
 		out := bytes.Buffer{}
 		cmd := exec.Command("mail", "-s", alm.Subject, alm.Recipient)
 		cmd.Stdin = bytes.NewReader([]byte(alm.Content))
 		cmd.Stdout = &out
 		cmd.Stderr = &out
+		cmd.Env = os.Environ()
 		err = cmd.Run()
 		if err != nil {
 			return errors.New(fmt.Sprintf("Error ocurred: %s, response: %s", err.Error(), out.String()))
