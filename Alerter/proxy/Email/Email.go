@@ -40,6 +40,10 @@ func (proxy *Email) GetConfig() *Alerter.Config {
 }
 
 func (proxy *Email) IsValidGateWay(gateway string) bool {
+	if gateway == "sendmail://" {
+		return true;
+	}
+	
 	valid, _ := regexp.Match(`(?i)^https?://`, []byte(gateway))
 	return valid
 }
@@ -63,7 +67,7 @@ func (proxy *Email) Send(alm Alerter.Alert) (err error) {
 		}
 		
 		out := bytes.Buffer{}
-		cmd := exec.Command("mail", "-s", alm.Subject, "-t", alm.Recipient)
+		cmd := exec.Command("mail", "-s", alm.Subject, alm.Recipient)
 		cmd.Stdin = bytes.NewReader([]byte(alm.Content))
 		cmd.Stdout = &out
 		cmd.Stderr = &out
