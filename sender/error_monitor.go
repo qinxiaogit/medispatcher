@@ -82,7 +82,7 @@ func (em *errorMonitor) start() {
 }
 
 func (em *errorMonitor) addSubscriptionCheck(sub *data.SubscriptionRecord, subParam SubscriptionParams) {
-	if (em.alerterSms == nil || subParam.AlerterPhoneNumbers == "") && (em.alerterSms == nil || subParam.AlerterEmails == "") && (em.alarmPlatform == nil || subParam.AlerterReceiver == "") {
+	if (em.alerterSms == nil || subParam.AlerterPhoneNumbers == "") && (em.alerterEmail == nil || subParam.AlerterEmails == "") && (em.alarmPlatform == nil || subParam.AlerterReceiver == "") {
 		// 同时也无法使用默认报警.
 		if em.alarmPlatform == nil || config.GetConfig().DefaultAlarmReceiver == "" || config.GetConfig().DefaultAlarmChan == "" {
 			l.LoggerByDay.Debugw("ShouldAlert No addSubscriptionCheck",
@@ -213,7 +213,7 @@ func (em *errorMonitor) addMessageCheck(sub *data.SubscriptionRecord, subParam S
 			"subParam.MessageFailureAlertThreshold", subParam.MessageFailureAlertThreshold)
 		return
 	}
-	if (em.alerterSms == nil || subParam.AlerterPhoneNumbers == "") && (em.alerterSms == nil || subParam.AlerterEmails == "") && (em.alarmPlatform == nil || subParam.AlerterReceiver == "") {
+	if (em.alerterSms == nil || subParam.AlerterPhoneNumbers == "") && (em.alerterEmail == nil || subParam.AlerterEmails == "") && (em.alarmPlatform == nil || subParam.AlerterReceiver == "") {
 		// 同时也无法使用默认报警.
 		if em.alarmPlatform == nil || config.GetConfig().DefaultAlarmReceiver == "" || config.GetConfig().DefaultAlarmChan == "" {
 			l.LoggerByDay.Debugw("ShouldAlert No addMessageCheck",
