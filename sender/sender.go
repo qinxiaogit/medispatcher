@@ -569,10 +569,7 @@ func transferSubscriptionViaHttp(msg *data.MessageStuct, sub *data.SubscriptionR
 
 	// TODO 统计发送情况
 	defer func() {
-		if httpStatusCode == http.StatusOK {
-			//发送成功
-			pushstatistics.Add(sub, 1)
-		}
+		pushstatistics.Add(sub, 1, httpStatusCode == http.StatusOK)
 	}()
 
 	postFields["message"] = string(msgBody)

@@ -2,49 +2,6 @@ package pushstatistics
 
 import "sync"
 
-// Categorys define 统计值
-type Categorys struct {
-	V   []int `json:"-"`
-	Len uint  `json:"-"`
-
-	Second int `json:"second"`
-	Minute int `json:"minute"`
-	Hour   int `json:"hour"`
-	Day    int `json:"day"`
-}
-
-func newValue(length uint) *Categorys {
-	return &Categorys{
-		V:   make([]int, length),
-		Len: length,
-	}
-}
-
-// TickAt will 到下一秒
-func (c *Categorys) TickAt(lastIndex, curIndex uint) {
-	minute := (lastIndex + c.Len - 60) % c.Len
-	hour := (lastIndex + c.Len - 3600) % c.Len
-	day := (lastIndex + c.Len - 86400) % c.Len
-
-	c.Second = 0
-	c.Minute -= c.V[minute]
-	c.Hour -= c.V[hour]
-	c.Day -= c.V[day]
-
-	c.V[curIndex] = 0
-	return
-}
-
-// AddAt 在index位置添加count
-func (c *Categorys) AddAt(index uint, count int) {
-	c.V[index] += count
-
-	c.Second += count
-	c.Minute += count
-	c.Hour += count
-	c.Day += count
-}
-
 // Statistics define 统计数据
 type Statistics struct {
 	sync.RWMutex
@@ -111,4 +68,20 @@ func (s *Statistics) Show() map[string]map[string]*Categorys {
 	s.RLock()
 	defer s.RUnlock()
 	return s.Data
+}
+
+// ShowCopy will 返回统计数据(copy方式)
+func (s *Statistics) ShowCopy() map[string]map[string]*Categorys {
+	data := s.Show()
+	tmp := map[string]map[string]*Categorys{}
+
+	for k1, v1 := range data {
+		for k2 := range v1 {
+			if _, ok := tmp[k1]; !ok {
+				tmp[k1] = map[string]*Categorys{}
+			}
+			tmp[k1][k2] = data[k1][k2].CopyShow()
+		}
+	}
+	return tmp
 }
