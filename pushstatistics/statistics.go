@@ -2,14 +2,13 @@ package pushstatistics
 
 import (
 	"container/list"
-	"strings"
 	"time"
 )
 
 const (
-	allSuffix     = "_"
-	failSuffix    = "_fail"
-	successSuffix = "_success"
+	allPrefix     = "ALL:"
+	failPrefix    = "FAIL:"
+	successPrefix = "SUCCESS:"
 )
 
 var (
@@ -48,24 +47,8 @@ func Add(mq MessageQueue, count int, success bool) {
 }
 
 // ShowData will 返回当前统计数据
-func ShowData(sufixs ...string) map[string]map[string]*Categorys {
-	out := statistics.ShowCopy()
-	for k0, v := range out {
-		for k1 := range v {
-			needDel := true
-			for _, sufix := range sufixs {
-				if strings.HasSuffix(k1, sufix) {
-					needDel = false
-					break
-				}
-			}
-			if needDel {
-				v[k1].Recover()
-				delete(out[k0], k1)
-			}
-		}
-	}
-	return out
+func ShowData(prefixes ...string) map[string]map[string]*Categorys {
+	return statistics.ShowCopy(prefixes...)
 }
 
 func run() {
@@ -80,19 +63,19 @@ func run() {
 			if data.Len() > 0 {
 				// data > 0, fail must be > 0
 				go func(at uint, all, failSrc, successSrc *list.List) {
-					fn := func(l *list.List, sufix string) {
+					fn := func(l *list.List, prefix string) {
 						if l == nil {
 							return
 						}
 						for item := l.Front(); item != nil; item = item.Next() {
 							v := item.Value.(MessageQueue)
-							ctg := statistics.channel(v.GetTopic(), v.GetChannel()+sufix)
+							ctg := statistics.channel(prefix+v.GetTopic(), v.GetChannel())
 							ctg.AddAt(at, 1)
 						}
 					}
-					fn(all, allSuffix)
-					fn(failSrc, failSuffix)
-					fn(successSrc, successSuffix)
+					fn(all, allPrefix)
+					fn(failSrc, failPrefix)
+					fn(successSrc, successPrefix)
 				}(last, data, fail, success)
 			}
 		}

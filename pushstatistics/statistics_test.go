@@ -53,11 +53,14 @@ func TestAdd(t *testing.T) {
 					test := newTest1()
 					Add(test, 1, true)
 					curLock.Lock()
-					if _, ok := cur[test.GetTopic()]; !ok {
-						cur[test.GetTopic()] = map[string]int{}
+					if _, ok := cur[allPrefix+test.GetTopic()]; !ok {
+						cur[allPrefix+test.GetTopic()] = map[string]int{}
 					}
-					cur[test.GetTopic()][test.GetChannel()+allSuffix]++
-					cur[test.GetTopic()][test.GetChannel()+successSuffix]++
+					if _, ok := cur[successPrefix+test.GetTopic()]; !ok {
+						cur[successPrefix+test.GetTopic()] = map[string]int{}
+					}
+					cur[allPrefix+test.GetTopic()][test.GetChannel()]++
+					cur[successPrefix+test.GetTopic()][test.GetChannel()]++
 					curLock.Unlock()
 
 					wg.Done()
@@ -70,11 +73,14 @@ func TestAdd(t *testing.T) {
 					test := newTest1()
 					Add(test, 1, false)
 					curLock.Lock()
-					if _, ok := cur[test.GetTopic()]; !ok {
-						cur[test.GetTopic()] = map[string]int{}
+					if _, ok := cur[failPrefix+test.GetTopic()]; !ok {
+						cur[failPrefix+test.GetTopic()] = map[string]int{}
 					}
-					cur[test.GetTopic()][test.GetChannel()+failSuffix]++
-					cur[test.GetTopic()][test.GetChannel()+allSuffix]++
+					if _, ok := cur[allPrefix+test.GetTopic()]; !ok {
+						cur[allPrefix+test.GetTopic()] = map[string]int{}
+					}
+					cur[failPrefix+test.GetTopic()][test.GetChannel()]++
+					cur[allPrefix+test.GetTopic()][test.GetChannel()]++
 					curLock.Unlock()
 					wg.Done()
 				}()
@@ -82,7 +88,7 @@ func TestAdd(t *testing.T) {
 			wg.Wait()
 
 			time.Sleep(time.Second * 3)
-			data := ShowData(allSuffix, successSuffix, failSuffix)
+			data := ShowData(allPrefix, successPrefix, failPrefix)
 
 			for t, channels := range cur {
 				for c, count := range channels {
@@ -103,9 +109,9 @@ func TestAdd(t *testing.T) {
 			sumD := 0
 			sumH := 0
 			sumM := 0
-			for _, channels := range data {
-				for c, count := range channels {
-					if strings.HasSuffix(c, allSuffix) {
+			for c, channels := range data {
+				for _, count := range channels {
+					if strings.HasPrefix(c, allPrefix) {
 						sumD += count.Day
 						sumH += count.Hour
 						sumM += count.Minute

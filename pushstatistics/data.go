@@ -1,6 +1,9 @@
 package pushstatistics
 
-import "sync"
+import (
+	"strings"
+	"sync"
+)
 
 // Statistics define 统计数据
 type Statistics struct {
@@ -71,11 +74,22 @@ func (s *Statistics) Show() map[string]map[string]*Categorys {
 }
 
 // ShowCopy will 返回统计数据(copy方式)
-func (s *Statistics) ShowCopy() map[string]map[string]*Categorys {
+func (s *Statistics) ShowCopy(prefixes ...string) map[string]map[string]*Categorys {
 	data := s.Show()
 	tmp := map[string]map[string]*Categorys{}
 
 	for k1, v1 := range data {
+		need := false
+		for _, prefix := range prefixes {
+			if strings.HasPrefix(k1, prefix) {
+				need = true
+				break
+			}
+		}
+		if !need {
+			continue
+		}
+
 		for k2 := range v1 {
 			if _, ok := tmp[k1]; !ok {
 				tmp[k1] = map[string]*Categorys{}

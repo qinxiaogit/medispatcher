@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strings"
 
 	l "github.com/sunreaver/gotools/logger"
 )
@@ -35,7 +36,7 @@ func GetPushStatistics(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	show := ShowData(allSuffix)
+	show := ShowData(allPrefix)
 	defer func() {
 		// 回收复制出来的数据
 		for k1 := range show {
@@ -46,7 +47,7 @@ func GetPushStatistics(w http.ResponseWriter, req *http.Request) {
 	}()
 	out := makePrometheusFormat(show,
 		func(c *Categorys) (int, string) {
-			return c.Second, "second"
+			return c.Second, "sec"
 		},
 		req.URL.Query().Get("nozero") == "true")
 	w.WriteHeader(http.StatusOK)
@@ -68,7 +69,7 @@ func GetProbability10Second(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	show := ShowData(failSuffix)
+	show := ShowData(failPrefix, allPrefix)
 	defer func() {
 		// 回收复制出来的数据
 		for k1 := range show {
@@ -77,9 +78,40 @@ func GetProbability10Second(w http.ResponseWriter, req *http.Request) {
 			}
 		}
 	}()
-	out := makePrometheusFormat(show,
+
+	fail := map[string]map[string]*Categorys{}
+	// 计算几率
+	for k0 := range show {
+		if strings.HasPrefix(k0, allPrefix) {
+			// 找到对应的失败次数
+			k1 := failPrefix + k0[len(allPrefix):]
+			fail[k1] = show[k0]
+			v1, hadFail := show[k1]
+			for tmp := range fail[k1] {
+				if hadFail {
+					if c, ok := v1[tmp]; ok {
+						t1 := fail[k1][tmp].TenSecond
+						fail[k1][tmp].Second = c.Second * 100 / fail[k1][tmp].Second
+						fail[k1][tmp].TenSecond = c.TenSecond * 100 / fail[k1][tmp].TenSecond
+						fail[k1][tmp].Minute = c.Minute * 100 / fail[k1][tmp].Minute
+						fail[k1][tmp].Hour = c.Hour * 100 / fail[k1][tmp].Hour
+						fail[k1][tmp].Day = c.Day * 100 / fail[k1][tmp].Day
+						if fail[k1][tmp].TenSecond > 100 {
+							fmt.Println(c.TenSecond, t1)
+						}
+					} else {
+						fail[k1][tmp].Reset()
+					}
+				} else {
+					fail[k1][tmp].Reset()
+				}
+			}
+		}
+	}
+
+	out := makePrometheusFormat(fail,
 		func(c *Categorys) (int, string) {
-			return c.Second, "second"
+			return c.TenSecond, "10sec*%"
 		},
 		req.URL.Query().Get("nozero") == "true")
 	w.WriteHeader(http.StatusOK)
