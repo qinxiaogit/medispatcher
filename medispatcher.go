@@ -19,7 +19,7 @@ import (
 	"syscall"
 	"time"
 
-	l "github.com/sunreaver/gotools/logger"
+	l "github.com/sunreaver/logger"
 )
 
 var exitSigChan = make(chan bool)

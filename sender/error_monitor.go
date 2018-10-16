@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	l "github.com/sunreaver/gotools/logger"
+	l "github.com/sunreaver/logger"
 )
 
 type errorSubscriptionCheck struct {

@@ -33,7 +33,6 @@ func GetPushStatistics(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte(http.StatusText(http.StatusMethodNotAllowed)))
 		return
 	}
-
 	out := makePrometheusFormat(ShowData(), req.URL.Query().Get("nozero") == "true")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(out))
@@ -78,14 +77,15 @@ func makePrometheusFormat(values map[string]map[string]*Categorys, nozero bool) 
 	*/
 	var strBuilder string
 	for keyTopic, topics := range values {
-		keyTopic = fmt.Sprintf("TOPIC:%s", fixTopicString(keyTopic))
+		topicName := fixTopicString(keyTopic)
+		metricName := "mec_topic_push_rate_1s"
 
 		tmpStr := ""
 		for keyChan, channels := range topics {
 			if nozero && channels.Second == 0 {
 				continue
 			}
-			tmpStr += fmt.Sprintf("%s{channel=\"%s\",split=\"second\"} %d\n", keyTopic, keyChan, channels.Second)
+			tmpStr += fmt.Sprintf("%s{topic=\"%s\" channel=\"%s\",split=\"second\"} %d\n", metricName, topicName, keyChan, channels.Second)
 			// strBuilder.WriteString(fmt.Sprintf("%s{channel=\"%s\",split=\"minute\"} %d\n", keyTopic, keyChan, channels.Minute))
 		}
 		if tmpStr != "" {
