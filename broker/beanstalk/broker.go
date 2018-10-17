@@ -47,8 +47,8 @@ func createClient(hostAddr string) (*beanstalkc.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	r := bufio.NewReader(conn)
-	w := bufio.NewWriter(conn)
+	r := bufio.NewReaderSize(conn, 256)
+	w := bufio.NewWriterSize(conn, 256)
 	return &beanstalkc.Client{
 		Conn:       conn,
 		ReadWriter: bufio.NewReadWriter(r, w),
