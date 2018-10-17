@@ -84,7 +84,7 @@ func ParseConfig() (*Config, error) {
 		fb, err := ioutil.ReadFile(os.Args[0])
 		if err == nil {
 			filehash := fmt.Sprintf("%x", md5.Sum(fb))
-			fmt.Printf("medispatcher %v(%v) build with %s on %s \r\n", VerNo, filehash, runtime.Version(), strings.Replace(BuildTime, "_", " ", -1))
+			fmt.Printf("medispatcher %v(%v) build with %s on %s git-hash %s \r\n", VerNo, filehash, runtime.Version(), strings.Replace(BuildTime, "_", " ", -1), GitHash)
 		} else {
 			fmt.Printf("medispatcher %v with %s on build on %s\r\n", VerNo, runtime.Version(), strings.Replace(BuildTime, "_", " ", -1))
 		}

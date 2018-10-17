@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	l "github.com/sunreaver/gotools/logger"
+	l "github.com/sunreaver/logger"
 )
 
 func httpRun(addr string) {

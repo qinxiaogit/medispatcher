@@ -12,6 +12,7 @@ import (
 )
 
 var BuildTime = "unknonw"
+var GitHash = ""
 
 const (
 	VerNo           = "2.4.3.3"
