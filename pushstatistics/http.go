@@ -147,7 +147,7 @@ func GetPushStatisticsAllData(w http.ResponseWriter, req *http.Request) {
 func makePrometheusFormat(values map[string]map[string]*Categorys, fnValue func(*Categorys) (int, string), nozero bool) (out string) {
 	var strBuilder string
 	for keyTopic, topics := range values {
-		keyTopic = fixTopicString(keyTopic)
+		topicName := fixTopicString(keyTopic)
 
 		tmpStr := ""
 		for keyChan, channels := range topics {
@@ -155,7 +155,8 @@ func makePrometheusFormat(values map[string]map[string]*Categorys, fnValue func(
 			if nozero && value == 0 {
 				continue
 			}
-			tmpStr += fmt.Sprintf("%s{channel=\"%s\",split=\"%s\"} %d\n", keyTopic, keyChan, split, value)
+			metricName := fmt.Sprintf("mec_topic_push_rate_%ss", split)
+			tmpStr += fmt.Sprintf("%s{topic=\"%s\", channel=\"%s\"} %d\n", metricName, topicName, keyChan, value)
 		}
 		if tmpStr != "" {
 			strBuilder += fmt.Sprintf("# HELP %s A MQ topic.\n# TYPE %s topic\n", keyTopic, keyTopic) + tmpStr
