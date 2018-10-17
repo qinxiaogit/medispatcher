@@ -36,7 +36,7 @@ func main() {
 	l.LoggerByDay.Debugw("Setup", "Config", config.GetConfig())
 
 	// 启动prometheus统计功能
-	pushstatistics.PrometheusStatisticsStart()
+	pushstatistics.PrometheusStatisticsStart(config.GetConfig().PrometheusApiAddr)
 
 	go http.ListenAndServe(config.GetConfig().DebugAddr, nil)
 	maxProcs := runtime.NumCPU()

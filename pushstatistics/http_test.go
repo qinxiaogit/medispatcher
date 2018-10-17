@@ -47,7 +47,7 @@ var (
 func TestGetPushStatistics(t *testing.T) {
 	Convey("GetPushStatistics", t, func() {
 		Convey("Get Data", func() {
-			guard := Patch(ShowData, func() map[string]map[string]*Categorys {
+			guard := Patch(ShowData, func(_ ...string) map[string]map[string]*Categorys {
 				return testShowData
 			})
 			defer guard.Unpatch()
@@ -78,7 +78,7 @@ func TestGetPushStatistics(t *testing.T) {
 
 		})
 		Convey("Post Data", func() {
-			guard := Patch(ShowData, func() map[string]map[string]*Categorys {
+			guard := Patch(ShowData, func(_ ...string) map[string]map[string]*Categorys {
 				return testShowData
 			})
 			defer guard.Unpatch()
