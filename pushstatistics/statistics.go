@@ -24,7 +24,7 @@ func PrometheusStatisticsStart(addr string) {
 	failData = NewMQList()
 	successData = NewMQList()
 	statistics = &Statistics{
-		Len:  86400, // 1day
+		Len:  600, // 10 minutes
 		Data: map[string]map[string]*Categorys{},
 	}
 	go run()
