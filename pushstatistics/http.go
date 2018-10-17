@@ -47,7 +47,7 @@ func GetPushStatistics(w http.ResponseWriter, req *http.Request) {
 	}()
 	out := makePrometheusFormat(show,
 		func(c *Categorys) (int, string) {
-			return c.Second, "sec"
+			return c.Second, "1s"
 		},
 		req.URL.Query().Get("nozero") == "true")
 	w.WriteHeader(http.StatusOK)
@@ -111,7 +111,7 @@ func GetProbability10Second(w http.ResponseWriter, req *http.Request) {
 
 	out := makePrometheusFormat(fail,
 		func(c *Categorys) (int, string) {
-			return c.TenSecond, "10sec*%"
+			return c.TenSecond, "10s*%"
 		},
 		req.URL.Query().Get("nozero") == "true")
 	w.WriteHeader(http.StatusOK)
@@ -155,7 +155,7 @@ func makePrometheusFormat(values map[string]map[string]*Categorys, fnValue func(
 			if nozero && value == 0 {
 				continue
 			}
-			metricName := fmt.Sprintf("mec_topic_push_rate_%ss", split)
+			metricName := fmt.Sprintf("mec_topic_push_rate_%s", split)
 			tmpStr += fmt.Sprintf("%s{topic=\"%s\", channel=\"%s\"} %d\n", metricName, topicName, keyChan, value)
 		}
 		if tmpStr != "" {
