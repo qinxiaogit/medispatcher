@@ -167,9 +167,9 @@ func makePrometheusFormat(values map[string]map[string]*Categorys, fnValue func(
 }
 
 func fixTopicString(topic string) string {
-	strings.TrimPrefix(topic, allPrefix)
-	strings.TrimLeft(topic, failPrefix)
-	strings.TrimLeft(topic, successPrefix)
+	topic = strings.TrimPrefix(topic, allPrefix)
+	topic = strings.TrimLeft(topic, failPrefix)
+	topic = strings.TrimLeft(topic, successPrefix)
 	re := regexp.MustCompile("([^a-zA-Z0-9_:]+)")
 	return re.ReplaceAllString(topic, "_")
 }
