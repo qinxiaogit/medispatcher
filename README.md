@@ -146,3 +146,8 @@ First release of v2.
 #### Features
 
 * 支持通过sendmail发送邮件(AlerterEmail.Gateway="sendmail://")
+
+### 2.4.4
+#### Enhancement 
+
+* 对未设置处理地址的订阅，不发送报警消息.

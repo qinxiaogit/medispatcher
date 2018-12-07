@@ -498,7 +498,7 @@ func sendSubscriptionAsRetry(msgChan chan *Msg, sub data.SubscriptionRecord, sos
 					)
 				}
 			}
-			if !sentSuccess && sossr.GetSubParams().AlerterEnabled {
+			if sendUrl != "" && !sentSuccess && sossr.GetSubParams().AlerterEnabled {
 				l.LoggerByDay.Debugw("SendSubscriptionAsRetry", "sossr", sossr.GetSubParams(),
 					"msg", msg)
 				senderErrorMonitor.addSubscriptionCheck(&sub, sossr.GetSubParams())

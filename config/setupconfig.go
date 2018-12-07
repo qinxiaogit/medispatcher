@@ -15,7 +15,7 @@ var BuildTime = "unknonw"
 var GitHash = ""
 
 const (
-	VerNo           = "2.4.3.3"
+	VerNo           = "2.4.4"
 	MAX_CONNECTIONS = 15000
 	// 客户端响应超时
 	CLIENT_TIMEOUT  = time.Second * 5
