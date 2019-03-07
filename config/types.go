@@ -41,8 +41,8 @@ type Config struct {
 	DAEMON_GID  int
 	ClientVer   string
 
-	AlerterEmail Alerter.Config
-	AlerterSms   Alerter.Config
+	AlerterEmail  Alerter.Config
+	AlerterSms    Alerter.Config
 	AlarmPlatform Alerter.Config
 
 	ListenersOfMainQueue uint16
@@ -82,4 +82,7 @@ type Config struct {
 	DefaultAlarmChan string
 	// 当前medis实例是否运行在压测环境.
 	RunAtBench bool
+
+	GlobalMessageBlockedAlertThreshold int
+	GlobalMessageBlockedAlarmInterval  int64
 }

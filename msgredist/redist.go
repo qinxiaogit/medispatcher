@@ -122,8 +122,24 @@ func StartAndWait() {
 				// 如果当前medis实例运行在bench模式，那么需要检查订阅者是否订阅压测消息.
 				if config.GetConfig().RunAtBench {
 					// 订阅者不接受bench环境的消息.
-					if ! sender.ReceiveBenchMsgs(sub.Subscription_id) {
+					if !sender.ReceiveBenchMsgs(sub.Subscription_id) {
 						logger.GetLogger("INFO").Printf("Ignore the bench environment message %v %v", msg.MsgKey, sub.Subscription_id)
+						continue
+					}
+				}
+				// 检查当前队列的长度，是否可以丢弃消息
+				subParams := sender.NewSubscriptionParams()
+				err = subParams.Load(sub.Subscription_id)
+				if err != nil {
+					logger.GetLogger("WARN").Printf("Failed to load subscription[%v] params: %v", sub.Subscription_id, err)
+					continue
+				}
+
+				topicStats := sender.GetTopicStats()
+				if stat, ok := topicStats.Stats[sub.Subscription_id]; ok {
+					// 直接丢弃消息，不发送到订阅队列
+					if subParams.DropMessageThreshold > 0 && stat.BlockedMessageCount > subParams.DropMessageThreshold {
+						logger.GetLogger("WARN").Printf("drop message %v %v", msg.MsgKey, sub.Subscription_id)
 						continue
 					}
 				}

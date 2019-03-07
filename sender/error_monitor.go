@@ -46,6 +46,19 @@ type errorMonitor struct {
 	checkPoints errorCheckPoints
 }
 
+type topicStat struct {
+	BlockedMessageCount        int
+	BlockedReQueueMessageCount int
+}
+
+// 所有队列的总长度以及每个队列的长度
+type TopicStats struct {
+	lastAlertTime                   int64
+	TotalBlockedMessageCount        int
+	TotalBlockedReQueueMessageCount int
+	Stats                           map[int32]topicStat
+}
+
 func newErrorMonitor() *errorMonitor {
 	alerterEmailCfg := config.GetConfig().AlerterEmail
 	alerterEmailCfg.Set("logger", logger.GetLogger("INFO"))
@@ -73,6 +86,9 @@ func newErrorMonitor() *errorMonitor {
 			subscriptions: map[int32]errorSubscriptionCheck{},
 			messages:      map[int32]errorMessageCheck{},
 		},
+	}
+	topicStats = TopicStats{
+		Stats: make(map[int32]topicStat),
 	}
 	return monitor
 }
@@ -358,6 +374,7 @@ func (em *errorMonitor) checkQueueBlocks() {
 		if err != nil {
 			logger.GetLogger("WARN").Printf("Failed to get subscriptions: %v", err)
 		} else {
+			var totalBlockedMessageCount, totalBlockedReQueueMessageCount int
 			for _, sub := range subscriptions {
 				var blockedMessageCount, blockedReQueueMessageCount int
 				subParams := NewSubscriptionParams()
@@ -366,23 +383,7 @@ func (em *errorMonitor) checkQueueBlocks() {
 					logger.GetLogger("WARN").Printf("Failed to load subscription[%v] params: %v", sub.Subscription_id, err)
 					continue
 				}
-				// 当前订阅没有打开报警.
-				if !subParams.AlerterEnabled {
-					continue
-				}
 
-				if subParams.AlerterEmails == "" && subParams.AlerterPhoneNumbers == "" && subParams.AlerterReceiver == "" {
-					// 没有任何可用的报警接收方.
-					if config.GetConfig().DefaultAlarmReceiver == "" && config.GetConfig().DefaultAlarmChan == "" {
-						continue
-					}
-				}
-				lastAlertTime, exists := alertStatistics[sub.Subscription_id]
-				currentTime := time.Now().Unix()
-
-				if exists && currentTime-lastAlertTime < subParams.IntervalOfErrorMonitorAlert {
-					continue
-				}
 				queueName := config.GetChannelName(sub.Class_key, sub.Subscription_id)
 				reQueueName := config.GetChannelNameForReSend(sub.Class_key, sub.Subscription_id)
 
@@ -405,11 +406,41 @@ func (em *errorMonitor) checkQueueBlocks() {
 				for _, s := range stats {
 					n, _ := s["current-jobs-ready"].(int)
 					blockedMessageCount += n
+					totalBlockedMessageCount += n
 				}
 
 				for _, s := range reQueueStats {
 					n, _ := s["current-jobs-ready"].(int)
 					blockedReQueueMessageCount += n
+					totalBlockedReQueueMessageCount += n
+				}
+				// 全局统计
+				var stat topicStat
+				if _, ok := topicStats.Stats[sub.Subscription_id]; !ok {
+					stat = topicStat{}
+					topicStats.Stats[sub.Subscription_id] = stat
+				}
+				stat.BlockedMessageCount = blockedMessageCount
+				stat.BlockedReQueueMessageCount = blockedReQueueMessageCount
+				topicStats.Stats[sub.Subscription_id] = stat
+
+				// 当前订阅没有打开报警.
+				if !subParams.AlerterEnabled {
+					continue
+				}
+
+				if subParams.AlerterEmails == "" && subParams.AlerterPhoneNumbers == "" && subParams.AlerterReceiver == "" {
+					// 没有任何可用的报警接收方.
+					if config.GetConfig().DefaultAlarmReceiver == "" && config.GetConfig().DefaultAlarmChan == "" {
+						continue
+					}
+				}
+
+				lastAlertTime, exists := alertStatistics[sub.Subscription_id]
+				currentTime := time.Now().Unix()
+
+				if exists && currentTime-lastAlertTime < subParams.IntervalOfErrorMonitorAlert {
+					continue
 				}
 
 				if blockedMessageCount == 0 && blockedReQueueMessageCount == 0 {
@@ -462,6 +493,32 @@ func (em *errorMonitor) checkQueueBlocks() {
 					alertStatistics[sub.Subscription_id] = currentTime
 				}
 			}
+			topicStats.TotalBlockedMessageCount = totalBlockedMessageCount
+			topicStats.TotalBlockedReQueueMessageCount = totalBlockedReQueueMessageCount
+
+			// 所有队列总长度报警
+			if config.GetConfig().GlobalMessageBlockedAlertThreshold != 0 &&
+				(totalBlockedMessageCount > config.GetConfig().GlobalMessageBlockedAlertThreshold ||
+					totalBlockedReQueueMessageCount > config.GetConfig().GlobalMessageBlockedAlertThreshold) {
+				currentTime := time.Now().Unix()
+				if topicStats.lastAlertTime == 0 ||
+					currentTime-topicStats.lastAlertTime > config.GetConfig().GlobalMessageBlockedAlarmInterval {
+					alert := Alerter.Alert{
+						Subject: "消息中心警报",
+						Content: fmt.Sprintf("全局队列消息等待数已达%v, 重试队列消息等待数已达%v, 请到后台订阅管理中调节消息处理速率参数或者优化woker的处理速度。",
+							totalBlockedMessageCount, totalBlockedReQueueMessageCount),
+					}
+					alert.Recipient = config.GetConfig().DefaultAlarmReceiver
+					alert.AlarmReceiveChan = config.GetConfig().DefaultAlarmChan
+					alert.TemplateName = "MessageSendingFailed.sms"
+					em.alarmPlatform.Alert(alert)
+					topicStats.lastAlertTime = currentTime
+				}
+			}
 		}
 	}
+}
+
+func GetTopicStats() TopicStats {
+	return topicStats
 }

@@ -73,6 +73,9 @@ CoeOfIntervalForRetrySendingMsg=1
 
 MsgQueueFaultToleranceListNamePrefix="event_center_message_in_failure_log:"
 
+GlobalMessageBlockedAlertThreshold = 100000
+GlobalMessageBlockedAlarmInterval  = 180
+
 [Database]
 Host="192.168.25.9"
 Port=3306

@@ -44,3 +44,4 @@ var senderRoutineStats = &SenderRoutineStats{
 }
 
 var senderErrorMonitor *errorMonitor
+var topicStats TopicStats
