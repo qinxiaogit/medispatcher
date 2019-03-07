@@ -132,15 +132,14 @@ func StartAndWait() {
 				err = subParams.Load(sub.Subscription_id)
 				if err != nil {
 					logger.GetLogger("WARN").Printf("Failed to load subscription[%v] params: %v", sub.Subscription_id, err)
-					continue
-				}
-
-				topicStats := sender.GetTopicStats()
-				if stat, ok := topicStats.Stats[sub.Subscription_id]; ok {
-					// 直接丢弃消息，不发送到订阅队列
-					if subParams.DropMessageThreshold > 0 && stat.BlockedMessageCount > subParams.DropMessageThreshold {
-						logger.GetLogger("WARN").Printf("drop message %v %v", msg.MsgKey, sub.Subscription_id)
-						continue
+				} else {
+					topicStats := sender.GetTopicStats()
+					if stat, ok := topicStats.Stats[sub.Subscription_id]; ok {
+						// 直接丢弃消息，不发送到订阅队列
+						if subParams.DropMessageThreshold > 0 && stat.BlockedMessageCount > subParams.DropMessageThreshold {
+							logger.GetLogger("WARN").Printf("drop message %v %v", msg.MsgKey, sub.Subscription_id)
+							continue
+						}
 					}
 				}
 
