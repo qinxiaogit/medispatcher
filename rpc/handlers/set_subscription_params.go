@@ -97,7 +97,7 @@ func (i SetSubscriptionParams) Process(args map[string]interface{}) (re interfac
 				} else {
 					v = uint16(vf)
 				}
-			case "SubscriptionTotalFailureAlertThreshold":
+			case "SubscriptionTotalFailureAlertThreshold", "DropMessageThresholdAction", "DropMessageThreshold":
 				if vf, ok := v.(float64); !ok {
 					err = fmt.Errorf("Param type error expecting: float/int: %s: %v", n, v)
 					return

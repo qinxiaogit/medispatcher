@@ -7,7 +7,7 @@ const (
 
 const (
 	// maximum database connections
-	MAX_DB_CONNECTIONS                         = 10
+	MAX_DB_CONNECTIONS = 10
 )
 
 const (
@@ -28,9 +28,15 @@ const (
 	SUBSCRIPTION_CANCEL = 1
 )
 
-const(
+const (
+	SUBSCRIPTION_DROP_MESSAGE_ACTION_RESERVE = 0
+	SUBSCRIPTION_DROP_MESSAGE_ACTION_LOG     = 1
+	SUBSCRIPTION_DROP_MESSAGE_ACTION_DROP    = 2
+)
+
+const (
 	REDIS_WRITE_COMMANDS = ",SET,LSET,LPUSH,RPUSH,"
-	REDIS_READ_COMMANDS = ",GET,LPOP,RPOP,BLPOP,BRPOP,"
+	REDIS_READ_COMMANDS  = ",GET,LPOP,RPOP,BLPOP,BRPOP,"
 )
 
 type MessageStuct struct {
@@ -47,6 +53,6 @@ type MessageStuct struct {
 	Delay    uint64
 	Priority uint32
 
-	Context string
+	Context     string
 	Owl_context string
 }

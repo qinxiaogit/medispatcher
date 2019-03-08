@@ -5,6 +5,7 @@ import (
 	"medispatcher/broker/beanstalk"
 	"medispatcher/config"
 	"medispatcher/data"
+	"medispatcher/filelog"
 	"medispatcher/logger"
 	"medispatcher/sender"
 	"runtime/debug"
@@ -135,10 +136,20 @@ func StartAndWait() {
 				} else {
 					topicStats := sender.GetTopicStats()
 					if stat, ok := topicStats.Stats[sub.Subscription_id]; ok {
-						// 直接丢弃消息，不发送到订阅队列
-						if subParams.DropMessageThreshold > 0 && stat.BlockedMessageCount > subParams.DropMessageThreshold {
-							logger.GetLogger("WARN").Printf("drop message %v %v", msg.MsgKey, sub.Subscription_id)
-							continue
+						// 根据配置选择是否丢弃消息或者写入日志文件
+						if subParams.DropMessageThreshold > 0 && stat.BlockedMessageCount > int(subParams.DropMessageThreshold) {
+							switch subParams.DropMessageThresholdAction {
+							case data.SUBSCRIPTION_DROP_MESSAGE_ACTION_RESERVE:
+								break
+							case data.SUBSCRIPTION_DROP_MESSAGE_ACTION_LOG:
+								err = filelog.Write(sub.Subscription_id, msgR)
+								if err != nil {
+									logger.GetLogger("ERROR").Printf("Write subscription[%v] drop message log failed: %s", sub.Subscription_id, err)
+								}
+							case data.SUBSCRIPTION_DROP_MESSAGE_ACTION_DROP:
+								continue
+							}
+
 						}
 					}
 				}

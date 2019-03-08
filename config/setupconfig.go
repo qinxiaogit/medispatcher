@@ -53,6 +53,7 @@ var config = &Config{
 	MsgQueueFaultToleranceListNamePrefix: "mec_list_of_msg_for_restore_to_queue_server:",
 	DATA_DIR:                             "/var/lib/medispatcher/",
 	RunAtBench:                           false,
+	DropMessageLogDir:                    "/var/lib/medispatcher-drop/",
 }
 
 //	TODO: not coroutine safe
@@ -122,6 +123,13 @@ func Setup() error {
 		err = os.MkdirAll(config.LOG_DIR, 0755)
 		if err != nil {
 			return errors.New(fmt.Sprintf("Failed to initialize log dir[%s]: %s", config.LOG_DIR, err))
+		}
+	}
+	// 创建丢弃数据日志目录
+	if !util.FileExists(config.DropMessageLogDir) {
+		err = os.MkdirAll(config.DropMessageLogDir, 0755)
+		if err != nil {
+			return errors.New(fmt.Sprintf("Failed to initialize drop message dir[%s]: %s", config.DropMessageLogDir, err))
 		}
 	}
 

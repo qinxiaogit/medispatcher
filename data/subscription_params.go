@@ -32,8 +32,10 @@ type SubscriptionParams struct {
 	SubscriptionTotalFailureAlertThreshold int32
 	// 消息堆积的报警极限，默认5000
 	MessageBlockedAlertThreshold int64
-	// 消息超过阈值时丢弃
-	DropMessageThreshold int
+	// 消息堆积超过阈值时可以选择丢弃
+	DropMessageThreshold int32
+	// 消息堆积超过阈值时丢弃行为（0:不丢弃;1:写入日志文件;2:直接丢弃）
+	DropMessageThresholdAction int32
 }
 
 func GetSubscriptionParamsById(subscriptionId int32) (sub SubscriptionParams, err error) {
@@ -102,6 +104,7 @@ func GetSubscriptionParamsById(subscriptionId int32) (sub SubscriptionParams, er
 			err = rowV.Scan(&sub.AlarmInterval)
 		case "DropMessageThreshold":
 			err = rowV.Scan(&sub.DropMessageThreshold)
+			// TODO: action
 		default:
 			// rowV必须被scan,避免row不能被关闭而占用连接。
 			rowV.Scan(&noParam)

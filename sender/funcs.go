@@ -128,6 +128,14 @@ func SetSubscriptionParams(subscriptionId int32, param SubscriptionParams) error
 		err = routineStatus.SetSubParam("AlarmInterval", param.AlarmInterval)
 	}
 
+	if err == nil {
+		err = routineStatus.SetSubParam("DropMessageThreshold", param.DropMessageThreshold)
+	}
+
+	if err == nil {
+		err = routineStatus.SetSubParam("DropMessageThresholdAction", param.DropMessageThresholdAction)
+	}
+
 	if err != nil {
 		return err
 	}

@@ -75,6 +75,8 @@ MsgQueueFaultToleranceListNamePrefix="event_center_message_in_failure_log:"
 
 GlobalMessageBlockedAlertThreshold = 100000
 GlobalMessageBlockedAlarmInterval  = 180
+# 可以丢弃的消息日志记录目录
+DropMessageLogDir = "/var/lib/medispatcher-drop/"
 
 [Database]
 Host="192.168.25.9"
