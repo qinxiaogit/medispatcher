@@ -104,7 +104,8 @@ func GetSubscriptionParamsById(subscriptionId int32) (sub SubscriptionParams, er
 			err = rowV.Scan(&sub.AlarmInterval)
 		case "DropMessageThreshold":
 			err = rowV.Scan(&sub.DropMessageThreshold)
-			// TODO: action
+		case "DropMessageThresholdAction":
+			err = rowV.Scan(&sub.DropMessageThresholdAction)
 		default:
 			// rowV必须被scan,避免row不能被关闭而占用连接。
 			rowV.Scan(&noParam)
