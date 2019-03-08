@@ -6,6 +6,7 @@ import (
 	"medispatcher/Alerter"
 	transproxy "medispatcher/transproxy/http"
 	"regexp"
+
 	// "strings"
 	"fmt"
 	"strings"
@@ -50,7 +51,7 @@ func (proxy *AlarmPlatform) IsValidPhoneNumber(phoneNum string) bool {
 
 func (proxy *AlarmPlatform) Send(alm Alerter.Alert) (err error) {
 	defer func() {
-		l.GetSugarLogger("alerter.log").Debugw("Send platform",
+		l.GetSugarLogger("alerter.log").Infow("Send platform",
 			"success", err == nil,
 			"Alert", alm,
 			"error", err)

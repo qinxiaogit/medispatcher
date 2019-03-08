@@ -10,10 +10,11 @@ import (
 	"strings"
 	"time"
 
-	l "github.com/sunreaver/logger"
 	"bytes"
-	"os/exec"
 	"os"
+	"os/exec"
+
+	l "github.com/sunreaver/logger"
 )
 
 type Email struct {
@@ -42,9 +43,9 @@ func (proxy *Email) GetConfig() *Alerter.Config {
 
 func (proxy *Email) IsValidGateWay(gateway string) bool {
 	if gateway == "sendmail://" {
-		return true;
+		return true
 	}
-	
+
 	valid, _ := regexp.Match(`(?i)^https?://`, []byte(gateway))
 	return valid
 }
@@ -56,7 +57,7 @@ func (proxy *Email) IsValidEmail(email string) bool {
 
 func (proxy *Email) Send(alm Alerter.Alert) (err error) {
 	defer func() {
-		l.GetSugarLogger("alerter.log").Debugw("Send email",
+		l.GetSugarLogger("alerter.log").Infow("Send email",
 			"proxy", proxy,
 			"error", err)
 	}()
@@ -64,11 +65,11 @@ func (proxy *Email) Send(alm Alerter.Alert) (err error) {
 	// 要求使用sendmail发送邮件.
 	if proxy.cfg.Gateway == "sendmail://" {
 		if strings.TrimSpace(alm.Recipient) == "" {
-			return nil;
+			return nil
 		}
 
 		os.Setenv("LANG", "en_US.UTF-8")
-		
+
 		out := bytes.Buffer{}
 		cmd := exec.Command("mail", "-s", alm.Subject, alm.Recipient)
 		cmd.Stdin = bytes.NewReader([]byte(alm.Content))

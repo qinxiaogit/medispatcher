@@ -49,7 +49,7 @@ func (proxy *Sms) IsValidPhoneNumber(phoneNum string) bool {
 
 func (proxy *Sms) Send(alm Alerter.Alert) (err error) {
 	defer func() {
-		l.GetSugarLogger("alerter.log").Debugw("Send sms",
+		l.GetSugarLogger("alerter.log").Infow("Send sms",
 			"proxy", proxy,
 			"error", err)
 	}()
