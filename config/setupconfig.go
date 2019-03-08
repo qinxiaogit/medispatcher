@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	util "medispatcher/osutil"
+	"medispatcher/strutil"
 	"os"
 	"path"
 	"reflect"
@@ -50,8 +51,8 @@ var config = &Config{
 	MaxMessageProcessTime:                uint32(30000),
 	DefaultMaxMessageProcessTime:         uint32(5000),
 	MsgQueueFaultToleranceListNamePrefix: "mec_list_of_msg_for_restore_to_queue_server:",
-	DATA_DIR:   "/var/lib/medispatcher/",
-	RunAtBench: false,
+	DATA_DIR:                             "/var/lib/medispatcher/",
+	RunAtBench:                           false,
 }
 
 //	TODO: not coroutine safe
@@ -88,6 +89,14 @@ func Setup() error {
 
 			if _, exists := v["DefaultAlarmChan"]; exists {
 				config.DefaultAlarmChan = v["DefaultAlarmChan"].(string)
+			}
+
+			if _, exists := v["GlobalMessageBlockedAlertThreshold"]; exists {
+				config.GlobalMessageBlockedAlertThreshold = strutil.ToInt(v["GlobalMessageBlockedAlertThreshold"])
+			}
+
+			if _, exists := v["GlobalMessageBlockedAlarmInterval"]; exists {
+				config.GlobalMessageBlockedAlarmInterval = int64(strutil.ToInt(v["GlobalMessageBlockedAlarmInterval"]))
 			}
 		}
 	}
