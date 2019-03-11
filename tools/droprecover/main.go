@@ -3,23 +3,22 @@ package main
 import (
 	"bufio"
 	"encoding/json"
-	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"log"
+	"medispatcher/broker"
 	"medispatcher/broker/beanstalk"
+	"medispatcher/config"
 	"medispatcher/data"
+	"medispatcher/msgredist"
 	"medispatcher/osutil"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"sort"
 	"strconv"
-	"strings"
 	"sync"
 	"syscall"
-	"time"
 )
 
 const (
@@ -27,18 +26,41 @@ const (
 )
 
 var (
-	dataDir string
-	subId   int
+	dataDir   string
+	subId     int
+	brCmdPool *beanstalk.SafeBrokerkPool
+	exitChan  chan struct{}
 )
 
-func init() {
-	flag.StringVar(&dataDir, "d", "", "drop message log dir")
-	flag.IntVar(&subId, "i", 0, "subscription id")
-	flag.Parse()
+var (
+	totalMessage int
+)
+
+func Init() {
+	flags := config.GetFlags()
+	flags.StringVar(&dataDir, "d", ".", "drop message log dir")
+	flags.IntVar(&subId, "i", 0, "subscription id")
+	err := config.Setup()
+	if err != nil {
+		log.Panicf("Config setup err: %v", err)
+	}
+}
+
+func shouldExit() bool {
+	select {
+	case <-exitChan:
+		return true
+	default:
+		return false
+	}
 }
 
 func main() {
-	var exitChan = make(chan struct{})
+	Init()
+
+	exitChan = make(chan struct{})
+	brCmdPool = broker.GetBrokerPoolWithBlock(uint32(config.GetConfig().ListenersOfMainQueue), msgredist.INTERVAL_OF_RETRY_ON_CONN_FAIL, shouldExit)
+
 	var wg sync.WaitGroup
 	err := os.Chdir(dataDir)
 	if err != nil {
@@ -62,6 +84,8 @@ func main() {
 		case syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGSTOP, syscall.SIGINT:
 			close(exitChan)
 			wg.Wait()
+			brCmdPool.Close(false)
+			log.Printf("总处理消息数: %d", totalMessage)
 			return
 		}
 	}
@@ -144,32 +168,6 @@ func listRecoverFiles(subId int32, m *MetaData) ([]string, error) {
 	return files, nil
 }
 
-// subscription_1_1552037666.data
-// subscription_1.metadata
-func decodeFilename(fname string) (prefix string, subId int32, ts int64, err error) {
-	fss := strings.Split(fname, ".")
-	if len(fss) != 2 {
-		err = errors.New("bad filename")
-		return
-	}
-	ss := strings.Split(fss[0], "_")
-	if len(ss) < 2 {
-		err = errors.New("bad filename")
-	}
-
-	prefix = ss[0]
-	subId64, err := strconv.ParseInt(ss[1], 10, 32)
-	if err != nil {
-		return
-	}
-	subId = int32(subId64)
-
-	if len(ss) == 3 {
-		ts, err = strconv.ParseInt(ss[2], 10, 64)
-	}
-	return
-}
-
 func recoverFile(exitChan chan struct{}, fname string, metaData *MetaData) error {
 	f, err := os.Open(fname)
 	if err != nil {
@@ -200,6 +198,7 @@ func recoverFile(exitChan chan struct{}, fname string, metaData *MetaData) error
 			if err != nil {
 				return fmt.Errorf("decode message: %s", err.Error())
 			}
+
 			err = handleMessageStruct(msg)
 			if err != nil {
 				return fmt.Errorf("handle message: %s", err.Error())
@@ -219,14 +218,24 @@ func decodeMessage(rawData []byte) (*data.MessageStuct, error) {
 		return nil, err
 	}
 
-	return data.UnserializeMessage(msgR.Body)
+	msg, err := data.UnserializeMessage(msgR.Body)
+	if err != nil {
+		return nil, err
+	}
+	msg.OriginJobId = msgR.Id
+	return msg, nil
 }
 
+// 恢复消息到队列
 func handleMessageStruct(msg *data.MessageStuct) error {
-	//TODO:恢复消息到队列
-	// log.Printf("handle message: %+v", msg)
-	time.Sleep(time.Second * 1)
-	return nil
+	subChannel := config.GetChannelName(msg.MsgKey, int32(subId))
+	jobBody, err := data.SerializeMessage(*msg)
+	if err != nil {
+		return err
+	}
+	_, err = brCmdPool.Pub(subChannel, jobBody, broker.DEFAULT_MSG_PRIORITY, 0, broker.DEFAULT_MSG_TTR)
+	totalMessage++
+	return err
 }
 
 type MetaData struct {
