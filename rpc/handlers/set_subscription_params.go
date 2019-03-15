@@ -108,6 +108,7 @@ func (i SetSubscriptionParams) Process(args map[string]interface{}) (re interfac
 			rElemField.Set(reflect.ValueOf(v))
 		}
 	}
+	logger.GetLogger("INFO").Printf("set subscription[%d] params %+v", subscriptionId, *subParams)
 	sErr := sender.SetSubscriptionParams(subscriptionId, *subParams)
 	return sErr == nil, sErr
 }
