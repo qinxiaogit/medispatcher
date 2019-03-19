@@ -134,8 +134,7 @@ func StartAndWait() {
 				if err != nil {
 					logger.GetLogger("WARN").Printf("Failed to load subscription[%v] params: %v", sub.Subscription_id, err)
 				} else {
-					topicStats := sender.GetTopicStats()
-					if stat, ok := topicStats.Stats[sub.Subscription_id]; ok {
+					if stat, ok := sender.GetTopicStat(sub.Subscription_id); ok {
 						// 根据配置选择是否丢弃消息或者写入日志文件
 						if subParams.DropMessageThreshold > 0 && stat.BlockedMessageCount > int(subParams.DropMessageThreshold) {
 							switch subParams.DropMessageThresholdAction {

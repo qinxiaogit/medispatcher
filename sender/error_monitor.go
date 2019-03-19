@@ -53,10 +53,24 @@ type topicStat struct {
 
 // 所有队列的总长度以及每个队列的长度
 type TopicStats struct {
+	mu                              sync.RWMutex
 	lastAlertTime                   int64
 	TotalBlockedMessageCount        int
 	TotalBlockedReQueueMessageCount int
-	Stats                           map[int32]topicStat
+	stats                           map[int32]topicStat
+}
+
+func (s *TopicStats) GetStat(id int32) (topicStat, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	stat, ok := s.stats[id]
+	return stat, ok
+}
+
+func (s *TopicStats) setStat(id int32, bmc int, brmc int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.stats[id] = topicStat{bmc, brmc}
 }
 
 func newErrorMonitor() *errorMonitor {
@@ -87,8 +101,8 @@ func newErrorMonitor() *errorMonitor {
 			messages:      map[int32]errorMessageCheck{},
 		},
 	}
-	topicStats = TopicStats{
-		Stats: make(map[int32]topicStat),
+	topicStats = &TopicStats{
+		stats: make(map[int32]topicStat),
 	}
 	return monitor
 }
@@ -415,14 +429,7 @@ func (em *errorMonitor) checkQueueBlocks() {
 					totalBlockedReQueueMessageCount += n
 				}
 				// 全局统计
-				var stat topicStat
-				if _, ok := topicStats.Stats[sub.Subscription_id]; !ok {
-					stat = topicStat{}
-					topicStats.Stats[sub.Subscription_id] = stat
-				}
-				stat.BlockedMessageCount = blockedMessageCount
-				stat.BlockedReQueueMessageCount = blockedReQueueMessageCount
-				topicStats.Stats[sub.Subscription_id] = stat
+				topicStats.setStat(sub.Subscription_id, blockedMessageCount, blockedReQueueMessageCount)
 
 				// 当前订阅没有打开报警.
 				if !subParams.AlerterEnabled {
@@ -519,6 +526,6 @@ func (em *errorMonitor) checkQueueBlocks() {
 	}
 }
 
-func GetTopicStats() TopicStats {
-	return topicStats
+func GetTopicStat(id int32) (topicStat, bool) {
+	return topicStats.GetStat(id)
 }
