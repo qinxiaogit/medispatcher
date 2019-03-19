@@ -69,7 +69,6 @@ func (proxy *AlarmPlatform) Send(alm Alerter.Alert) (err error) {
 		alm.Recipient = receiver
 
 		httpCode, resp, err := transproxy.TransferJSON(proxy.cfg.Gateway, proxy.packRequestData(&alm), time.Millisecond*DEFAULT_TRANSPORT_TIMEOUT)
-		fmt.Println(httpCode, string(resp))
 
 		if err != nil {
 			sErr = append(sErr, "Failed to send alert  by email: "+err.Error())

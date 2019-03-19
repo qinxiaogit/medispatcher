@@ -2,38 +2,38 @@
 package http
 
 import (
+	"compress/gzip"
 	"crypto/tls"
+	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
-	"io"
-	"compress/gzip"
-	"fmt"
 	"sync"
-	"encoding/json"
+	"time"
 )
 
 type clientInfo struct {
 	sync.RWMutex
-	httpClient *http.Client
-	transport *http.Transport
+	httpClient     *http.Client
+	transport      *http.Transport
 	lastAccessTime time.Time
 }
 
-type clientPool struct{
+type clientPool struct {
 	sync.RWMutex
 	pools map[string]*clientInfo
 }
 
-func (p *clientPool) get(addr string, reqTimeout time.Duration)(*http.Client, error){
+func (p *clientPool) get(addr string, reqTimeout time.Duration) (*http.Client, error) {
 	destUrl, err := url.Parse(addr)
 	if err != nil {
-		return nil , err
+		return nil, err
 	}
-	clientKey := fmt.Sprintf("%v[%v]", destUrl.Host,reqTimeout.Nanoseconds())
+	clientKey := fmt.Sprintf("%v[%v]", destUrl.Host, reqTimeout.Nanoseconds())
 	p.RLock()
-	if _, exists := p.pools[clientKey]; exists{
+	if _, exists := p.pools[clientKey]; exists {
 		c := p.pools[clientKey]
 		p.RUnlock()
 		c.Lock()
@@ -48,12 +48,12 @@ func (p *clientPool) get(addr string, reqTimeout time.Duration)(*http.Client, er
 		},
 	}
 	client := &http.Client{
-		Timeout: reqTimeout,
+		Timeout:   reqTimeout,
 		Transport: transport,
 	}
 	newClientInfo := &clientInfo{
-		httpClient: client,
-		transport: transport,
+		httpClient:     client,
+		transport:      transport,
 		lastAccessTime: time.Now(),
 	}
 	p.Lock()
@@ -66,16 +66,16 @@ var clients = clientPool{
 	pools: map[string]*clientInfo{},
 }
 
-func init(){
-	go func(){
+func init() {
+	go func() {
 		ticker := time.NewTicker(time.Second * 10)
-		for{
+		for {
 			<-ticker.C
 			tn := time.Now()
 			clients.Lock()
 			for key, c := range clients.pools {
 				c.Lock()
-				if tn.Sub(c.lastAccessTime) > time.Second * 10 {
+				if tn.Sub(c.lastAccessTime) > time.Second*10 {
 					c.transport.CloseIdleConnections()
 					delete(clients.pools, key)
 				}
@@ -93,7 +93,7 @@ func TransferJSON(addr string, data map[string]string, timeout time.Duration) (h
 		return 500, nil, err
 	}
 	req, err = http.NewRequest("POST", addr, strings.NewReader(string(reqData)))
-	fmt.Println(string(reqData))
+
 	if err != nil {
 		return
 	}
@@ -107,7 +107,7 @@ func TransferJSON(addr string, data map[string]string, timeout time.Duration) (h
 	req.Header.Set("Accept", "*/*")
 	req.Header.Set("Accept-Encoding", "gzip")
 	//req.Header.Set("Connection", "close")
-//	req.Header.Set("Keep-Alive", "300")
+	//	req.Header.Set("Keep-Alive", "300")
 	resp, err := client.Do(req)
 	if err != nil {
 		return
@@ -166,7 +166,7 @@ func Transfer(addr string, data map[string]string, headers map[string]string, ti
 	}
 
 	//req.Header.Set("Connection", "close")
-//	req.Header.Set("Keep-Alive", "300")
+	//	req.Header.Set("Keep-Alive", "300")
 	resp, err := client.Do(req)
 	if err != nil {
 		return
