@@ -113,7 +113,7 @@ func (self CleanQueue) Process(args map[string]interface{}) (interface{}, error)
 
 				defer d.Conn.Close()
 
-				lock := new(sync.Mutex)
+				// lock := new(sync.Mutex)
 				// 检测清理是否完成.
 				fin := time.NewTimer(time.Second * 10)
 				report := time.NewTimer(time.Second * 5)
@@ -121,7 +121,7 @@ func (self CleanQueue) Process(args map[string]interface{}) (interface{}, error)
 				total := 0
 
 				// 将job的状态由delay迁移到ready
-				go func() {
+				/* go func() {
 					for {
 						lock.Lock()
 						actuallyKicked, err := c.Kick(500)
@@ -136,7 +136,20 @@ func (self CleanQueue) Process(args map[string]interface{}) (interface{}, error)
 							return
 						}
 					}
-				}()
+				}() */
+				log.Infof("开始执行kick操作: %v ===> %v", host, topic)
+				for {
+					actuallyKicked, err := c.Kick(500)
+					if err != nil {
+						log.Warnf("执行kick操作时发生错误: %v ===> %v, ERR: %v", host, topic, err)
+						return
+					}
+
+					if actuallyKicked == 0 {
+						log.Infof("kick操作执行完毕: %v ===> %v", host, topic)
+						break
+					}
+				}
 
 				go func() {
 					for {
@@ -145,17 +158,17 @@ func (self CleanQueue) Process(args map[string]interface{}) (interface{}, error)
 							return
 						}
 
-						lock.Lock()
+						//lock.Lock()
 						id, _, err := c.Reserve()
-						lock.Unlock()
+						//lock.Unlock()
 						if err != nil {
 							log.Warnf("从队列中获取消息失败: %v ===> %v, ERR: %v", host, topic, err)
 							return
 						}
 
-						lock.Lock()
+						//lock.Lock()
 						err = c.Delete(id)
-						lock.Unlock()
+						//lock.Unlock()
 						if err != nil {
 							log.Warnf("从队列中删除消息失败: %v ===> %v, ERR: %v", host, topic, err)
 						} else {
