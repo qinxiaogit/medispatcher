@@ -151,3 +151,8 @@ First release of v2.
 #### Enhancement 
 
 * 对未设置处理地址的订阅，不发送报警消息.
+
+### 2.4.6
+#### Features
+
+* 支持队列清理功能

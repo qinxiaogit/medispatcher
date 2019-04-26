@@ -9,7 +9,7 @@ import (
 	"medispatcher/config"
 	"medispatcher/logger"
 	"medispatcher/rpc"
-	_ "medispatcher/rpc/handlers"
+	"medispatcher/rpc/handlers"
 	"net"
 	"reflect"
 	"strconv"
@@ -220,6 +220,11 @@ func Stop(exitSigChan *chan string) {
 	for GetCurrentConnectionCount() > 0 {
 		time.Sleep(time.Millisecond * 10)
 	}
+
+	// 等待队列清理服务终止.
+	handlers.SetStoppingState()
+	handlers.QueueCleanWaitGroup.Wait()
+
 	*exitSigChan <- "rpcservices"
 }
 
