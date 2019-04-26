@@ -1,17 +1,19 @@
 package handlers
 
+import "sync"
+
 var stoppingLocalServer bool
-var stoppingLock chan uint8 = make(chan uint8, 1)
+var stoppingLock = new(sync.Mutex)
 
 func SetStoppingState() {
-	stoppingLock <- 1
+	defer stoppingLock.Unlock()
+	stoppingLock.Lock()
 	stoppingLocalServer = true
-	<-stoppingLock
 }
 
 func isServerStopping() bool {
-	stoppingLock <- 1
+	stoppingLock.Lock()
 	state := stoppingLocalServer
-	<-stoppingLock
+	stoppingLock.Unlock()
 	return state
 }

@@ -135,8 +135,6 @@ func (self CleanQueue) Process(args map[string]interface{}) (interface{}, error)
 							log.Infof("kick操作执行完毕: %v ===> %v", host, topic)
 							return
 						}
-
-						fin.Reset(time.Second * 5)
 					}
 				}()
 

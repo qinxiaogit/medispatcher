@@ -1,0 +1,75 @@
+package main
+
+import (
+	"flag"
+	"os"
+	"strings"
+	"sync"
+	"git.oschina.net/chaos.su/beanstalkc"
+	"github.com/labstack/gommon/log"
+	"time"
+	"fmt"
+)
+var wg = &sync.WaitGroup{}
+func main(){
+	fs := flag.NewFlagSet("arg", flag.ExitOnError)
+	var hosts string
+	var queues string
+	var con int
+	fs.StringVar(&hosts,"host","", "beantalkd ip:port列表, e.g. 127.0.0.1:11300,127.0.0.1:11301")
+	fs.StringVar(&queues, "queue", "", "队列名称列表, e.g. q1,q2")
+	fs.IntVar(&con, "c", 1, "并发数.")
+	fs.Parse(os.Args[1:])
+	aHosts := strings.Split(hosts, ",")
+	aQueues := strings.Split(queues, ",")
+	if len(hosts) < 1 || len(queues) < 1 {
+		fmt.Println("beanstalkd地址或者队列名称未设置!")
+		os.Exit(1)
+	}
+	for _,h := range aHosts{
+		for _, q := range aQueues{
+			for n := con; n > 0; n-- {
+				wg.Add(1)
+				go clear(h, q)
+			}
+		}
+	}
+	wg.Wait()
+}
+
+func clear(host, queue string){
+	defer wg.Done()
+	c, err := beanstalkc.Dial(host)
+	if err != nil {
+		log.Errorf("%v", err)
+		return
+	}
+	defer c.Conn.Close()
+	log.Infof("开始清除队列: %v ===> %v", host, queue)
+	tc := time.NewTimer(time.Second * 10)
+	tcReport := time.NewTicker(time.Second * 5)
+	jobIdCh := make(chan uint64)
+	go func(){
+		var id uint64
+		c.Watch(queue)
+		for {
+			id, _, err = c.Reserve()
+			if err != nil {
+				log.Warnf("队列清除出错: %v ===> %v, ERR: %v", host, queue, err)
+				return
+			}
+
+            err = c.Delete(id)
+            if err != nil {
+                log.Warnf("队列清除出错: %v ===> %v, ERR: %v, id: %v", host, queue, err, id)
+            }
+		}
+	}()
+	for{
+		select{
+		case <-tc.C:
+			log.Infof("队列清除完成: %v ===> %v", host, queue)
+			return
+        }
+	}
+}
