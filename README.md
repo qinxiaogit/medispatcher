@@ -156,3 +156,10 @@ First release of v2.
 #### Features
 
 * 支持队列清理功能
+
+### 2.4.7
+#### Features
+
+* 从redis中取出的job在写入beanstalkd时如果发生JOB_TOO_BIG错误, 则不重新放回到redis(防止死循环).
+* 修复队列清理功能bug, 解决清理特定的通道时, 如果该通道一直有大量的数据流入, 导致清理操作无法终止的问题.
+

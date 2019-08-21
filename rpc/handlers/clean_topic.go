@@ -152,7 +152,15 @@ func (self CleanQueue) Process(args map[string]interface{}) (interface{}, error)
 				}
 
 				go func() {
+					t := time.NewTimer(time.Minute * 5)
 					for {
+						select {
+						case <-t.C:
+							log.Infof("清理操作超时, 终止队列清理操作: %v ===> %v", host, topic)
+							return
+						default:
+						}
+
 						if isServerStopping() {
 							log.Infof("进程即将退出, 终止队列清理操作: %v ===> %v", host, topic)
 							return
