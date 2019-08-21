@@ -2,13 +2,13 @@ package recoverwatcher
 
 import (
 	"medispatcher/broker"
+	"medispatcher/broker/beanstalk"
 	"medispatcher/config"
 	"medispatcher/data"
 	"medispatcher/logger"
 	"reflect"
 	"strings"
 	"time"
-	"medispatcher/broker/beanstalk"
 )
 
 // StartAndWait starts the recover process until Stop is called.
@@ -21,8 +21,8 @@ func StartAndWait() {
 		brPool         *beanstalk.SafeBrokerkPool
 		msg            *data.MessageStuct
 	)
-	defer func(){
-		err:= recover()
+	defer func() {
+		err := recover()
 		if err != nil {
 			logger.GetLogger("ERROR").Printf("recoverwatcher exiting abnormally: %v", err)
 		}
@@ -67,7 +67,7 @@ func StartAndWait() {
 		dataRaw, err := redis.Do("BRPOP", cmdArgKeys...)
 		if err != nil {
 			logger.GetLogger("WARN").Printf("%v: cmds: %v", err, cmdArgKeys)
-			if strings.Index(err.Error(), "closed") != -1 || strings.Index(err.Error(), "EOF") != -1{
+			if strings.Index(err.Error(), "closed") != -1 || strings.Index(err.Error(), "EOF") != -1 {
 				redisConnected = false
 			}
 			time.Sleep(time.Second * 1)
@@ -102,6 +102,11 @@ func StartAndWait() {
 			}
 			_, err = brPool.Pub(config.GetConfig().NameOfMainQueue, dataB, msg.Priority, msg.Delay, broker.DEFAULT_MSG_TTR)
 			if err != nil {
+				// job包的大小超过beanstalkd的限制.
+				if strings.Index(strings.ToLower(err.Error()), "job_too_big") != -1 {
+					logger.GetLogger("WARN").Printf("job data exceeds server-enforced limit: %v", dataB)
+					continue
+				}
 				// tailed to put to the queue server, then push it back to recover list again.
 				_, err = redis.Do("RPUSH", dataRawL[0], dataB)
 				if err != nil {
