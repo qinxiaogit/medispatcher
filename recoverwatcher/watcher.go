@@ -104,7 +104,7 @@ func StartAndWait() {
 			if err != nil {
 				// job包的大小超过beanstalkd的限制.
 				if strings.Index(strings.ToLower(err.Error()), "job_too_big") != -1 {
-					logger.GetLogger("WARN").Printf("job data exceeds server-enforced limit: %v", dataB)
+					logger.GetLogger("WARN").Printf("job data exceeds server-enforced limit: Sender=%v MsgKey=%v OriginJobId=%v len=%d", msg.Sender, msg.MsgKey, msg.OriginJobId, len(dataB))
 					continue
 				}
 				// tailed to put to the queue server, then push it back to recover list again.
