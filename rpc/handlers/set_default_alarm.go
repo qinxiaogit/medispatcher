@@ -36,6 +36,11 @@ func (_ SetDefaultAlarm) Process(args map[string]interface{}) (interface{}, erro
 		data["GlobalMessageBlockedAlarmInterval"] = int64(strutil.ToInt(args["global_message_blocked_alarm_interval"]))
 	}
 
+	if _, exists = args["name_of_main_queue_blocked_alert_threshold"]; exists {
+		config.GetConfigPointer().NameOfMainQueueBlockedAlertThreshold = strutil.ToInt(args["name_of_main_queue_blocked_alert_threshold"])
+		data["NameOfMainQueueBlockedAlertThreshold"] = strutil.ToInt(args["name_of_main_queue_blocked_alert_threshold"])
+	}
+
 	config.SaveConfig("default_alarm", data)
 
 	return nil, nil

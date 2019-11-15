@@ -382,8 +382,40 @@ func (em *errorMonitor) checkQueueBlocks() {
 
 	// 如果订阅没有配置报警接收人则使用全局默认配置.
 	var sentAlarm bool
+	var mainQueueLastAlertTime int64
 	for {
 		time.Sleep(time.Second * 15)
+
+		// 检查主队列的阻塞情况
+		stats, errOfQueue = brPool.StatsTopic(config.GetConfig().NameOfMainQueue)
+		if errOfQueue != nil {
+			logger.GetLogger("WARN").Printf("%v ERR: %v", config.GetConfig().NameOfMainQueue, errOfQueue)
+		} else {
+			mainQueueJobNum := 0
+			for _, s := range stats {
+				n, _ := s["current-jobs-ready"].(int)
+				mainQueueJobNum += n
+			}
+
+			if config.GetConfig().NameOfMainQueueBlockedAlertThreshold != 0 && mainQueueJobNum > config.GetConfig().NameOfMainQueueBlockedAlertThreshold {
+				currentTime := time.Now().Unix()
+				if mainQueueLastAlertTime == 0 || currentTime - mainQueueLastAlertTime > config.GetConfig().GlobalMessageBlockedAlarmInterval {
+					alert := Alerter.Alert{
+						Subject: "消息中心警报",
+						Content: fmt.Sprintf(
+							"主队列消息等待数已达%v, 请及时处理!",
+							mainQueueJobNum,
+						),
+					}
+					alert.Recipient = config.GetConfig().DefaultAlarmReceiver
+					alert.AlarmReceiveChan = config.GetConfig().DefaultAlarmChan
+					alert.TemplateName = "MessageSendingFailed.sms"
+					em.alarmPlatform.Alert(alert)
+					mainQueueLastAlertTime = currentTime
+				}
+			}
+		}
+
 		subscriptions, err := data.GetAllSubscriptionsWithCache()
 		if err != nil {
 			logger.GetLogger("WARN").Printf("Failed to get subscriptions: %v", err)

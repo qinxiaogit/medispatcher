@@ -83,10 +83,12 @@ type Config struct {
 	// 当前medis实例是否运行在压测环境.
 	RunAtBench bool
 
-	// 全局队列长度报警阈值
+	// 全局队列长度报警阈值(所有的订阅者current-jobs-ready之和)
 	GlobalMessageBlockedAlertThreshold int
 	// 全局队列长度报警时间间隔
 	GlobalMessageBlockedAlarmInterval int64
+	// 主队列长度报警阈值(NameOfMainQueue)
+	NameOfMainQueueBlockedAlertThreshold int
 
 	// 可以丢弃的消息日志记录目录
 	DropMessageLogDir string
