@@ -36,8 +36,8 @@ func GetBlockedStats(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	w.Write([]byte(fmt.Sprintf("# HELP mec_queue_blocked_rate_%ds Queue blocking\r\n", queueBlockedStatsInterval)))
-	w.Write([]byte(fmt.Sprintf("# TYPE mec_queue_blocked_rate_%ds gauge\r\n", queueBlockedStatsInterval)))
+	w.Write([]byte(fmt.Sprintf("# HELP mec_queue_blocked_rate_%ds Queue blocking\n", queueBlockedStatsInterval)))
+	w.Write([]byte(fmt.Sprintf("# TYPE mec_queue_blocked_rate_%ds gauge\n", queueBlockedStatsInterval)))
 	queueBlocked.Range(func(key, val interface{}) bool {
 		// 脏数据, message key为空
 		if strings.HasPrefix(key.(string), "/") {
@@ -62,7 +62,7 @@ func GetBlockedStats(w http.ResponseWriter, req *http.Request) {
 			channel = tmp[2]
 		}
 
-		w.Write([]byte(fmt.Sprintf("mec_queue_blocked_rate_%ds{topic=\"%s\", channel=\"%s\", type=\"%s\"} %d\r\n", queueBlockedStatsInterval, topic, channel, topicType, val.(int))))
+		w.Write([]byte(fmt.Sprintf("mec_queue_blocked_rate_%ds{topic=\"%s\", channel=\"%s\", type=\"%s\"} %d\n", queueBlockedStatsInterval, topic, channel, topicType, val.(int))))
 		return true
 	})
 }
