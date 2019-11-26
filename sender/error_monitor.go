@@ -403,7 +403,8 @@ func (em *errorMonitor) checkQueueBlocks() {
 					alert := Alerter.Alert{
 						Subject: "消息中心警报",
 						Content: fmt.Sprintf(
-							"主队列消息等待数已达%v, 请及时处理!",
+							"%s环境主队列消息等待数已达%v, 请及时处理!",
+							config.GetConfig().RECEPTION_ENV,
 							mainQueueJobNum,
 						),
 					}
