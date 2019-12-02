@@ -15,56 +15,10 @@ func httpRun(addr string) {
 	mux.HandleFunc("/prometheus/pushstatistics", GetPushStatistics)
 	mux.HandleFunc("/prometheus/pushstatistics/withfail/10second", GetProbability10Second)
 	mux.HandleFunc("/pushstatistics/alldata", GetPushStatisticsAllData)
-	mux.HandleFunc("/beanstalkd/blocked", GetBlockedStats)
 	e := http.ListenAndServe(addr, mux)
 	if e != nil {
 		panic("pushstatistics http serve start error: " + e.Error())
 	}
-}
-
-// GetBlockedStats 得到阻塞统计
-func GetBlockedStats(w http.ResponseWriter, req *http.Request) {
-	defer func() {
-		if e := recover(); e != nil {
-			l.GetSugarLogger("push_statistics.log").Errorw("GetBlockedStats", "err", e)
-		}
-	}()
-
-	if req.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		w.Write([]byte(http.StatusText(http.StatusMethodNotAllowed)))
-		return
-	}
-
-	w.Write([]byte(fmt.Sprintf("# HELP mec_queue_blocked_rate_%ds Queue blocking\n", queueBlockedStatsInterval)))
-	w.Write([]byte(fmt.Sprintf("# TYPE mec_queue_blocked_rate_%ds gauge\n", queueBlockedStatsInterval)))
-	queueBlocked.Range(func(key, val interface{}) bool {
-		// 脏数据, message key为空
-		if strings.HasPrefix(key.(string), "/") {
-			return true
-		}
-
-		topicType := "normal"
-		if strings.HasSuffix(key.(string), "/FAIL") {
-			topicType = "fail"
-		}
-
-		topic := key.(string)
-		channel := ""
-		if strings.Index(topic, "/") != -1 {
-			tmp := strings.Split(key.(string), "/")
-			// 未知的脏数据
-			if len(tmp) < 3 {
-				return true
-			}
-
-			topic = tmp[0]
-			channel = tmp[2]
-		}
-
-		w.Write([]byte(fmt.Sprintf("mec_queue_blocked_rate_%ds{topic=\"%s\", channel=\"%s\", type=\"%s\"} %d\n", queueBlockedStatsInterval, topic, channel, topicType, val.(int))))
-		return true
-	})
 }
 
 // GetPushStatistics will 获取当前推送数据统计

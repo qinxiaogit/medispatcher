@@ -168,3 +168,8 @@ First release of v2.
 
 * 增加prometheus接口给出所有队列(包含主队列)的阻塞统计.
 * 添加主队列阻塞报警功能(通过消息中心后台配置).
+
+### 2.4.8.3
+#### Features
+
+* 删除prometheus队列阻塞统计接口(该接口导致将推送失败任务重写到队列的时候报write: connection timeed out错误)
