@@ -173,3 +173,8 @@ First release of v2.
 #### Features
 
 * 删除prometheus队列阻塞统计接口(该接口导致将推送失败任务重写到队列的时候报write: connection timeed out错误)
+
+### 2.4.8.4
+#### Features
+
+* 修复特定的topic没有订阅者(或订阅者取消订阅), 但是该topic有消息进入的时候, 频繁查询topic订阅者列表导致数据库QPS过高的问题

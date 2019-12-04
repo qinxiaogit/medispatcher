@@ -21,11 +21,11 @@ func Set(key string, data interface{}) {
 	caches[key] = data
 }
 
-func Get(key string) interface{} {
+func Get(key string) (interface{}, bool) {
 	rwLock.Lock()
 	defer rwLock.Unlock()
-	data := caches[key]
-	return data
+	data, ok := caches[key]
+	return data, ok
 }
 
 func Exists(key string) bool {

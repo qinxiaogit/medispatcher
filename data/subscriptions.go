@@ -75,7 +75,7 @@ func GetAllSubscriptionsFromDb() ([]SubscriptionRecord, error) {
 }
 
 func GetAllSubscriptionsFromCache() []SubscriptionRecord {
-	subscriptions := cache.Get(getSubscriptionsCacheKey("*"))
+	subscriptions, _ := cache.Get(getSubscriptionsCacheKey("*"))
 	switch subscriptions.(type) {
 	case nil:
 		return nil
@@ -133,20 +133,27 @@ func GetSubscriptionsByTopicFromDb(topicName string) ([]SubscriptionRecord, erro
 	return subscriptions, nil
 }
 
-func GetSubscriptionsByTopicFromCache(topicName string) []SubscriptionRecord {
-	subscriptions := cache.Get(getSubscriptionsCacheKey(topicName))
+func GetSubscriptionsByTopicFromCache(topicName string) ([]SubscriptionRecord, bool) {
+	subscriptions, exists := cache.Get(getSubscriptionsCacheKey(topicName))
 	switch subscriptions.(type) {
 	case nil:
-		return nil
+		return nil, exists
 	default:
-		return subscriptions.([]SubscriptionRecord)
+		return subscriptions.([]SubscriptionRecord), exists
 	}
 }
 
 func GetSubscriptionsByTopicWithCache(topicName string) ([]SubscriptionRecord, error) {
-	subscriptions := GetSubscriptionsByTopicFromCache(topicName)
+	subscriptions, exists := GetSubscriptionsByTopicFromCache(topicName)
 	if subscriptions != nil {
 		return subscriptions, nil
+	}
+
+	// subscriptions == nil
+	// exists 为true, 表示成功执行了sql查询, 但是特定topic没有符合条件的订阅者
+	// exists 为false, 表示特定的topic第一次查询  或 之前的查询一直是错误的, 不确定特定的topic下有没有符合条件的订阅者
+	if (exists) {
+		return nil, nil
 	}
 
 	subscriptions, err := GetSubscriptionsByTopicFromDb(topicName)
