@@ -16,7 +16,7 @@ var BuildTime = "unknonw"
 var GitHash = ""
 
 const (
-	VerNo           = "2.4.8.4"
+	VerNo           = "2.4.9"
 	MAX_CONNECTIONS = 15000
 	// 客户端响应超时
 	CLIENT_TIMEOUT  = time.Second * 5
@@ -51,9 +51,9 @@ var config = &Config{
 	MaxMessageProcessTime:                uint32(30000),
 	DefaultMaxMessageProcessTime:         uint32(5000),
 	MsgQueueFaultToleranceListNamePrefix: "mec_list_of_msg_for_restore_to_queue_server:",
-	DATA_DIR:          "/var/lib/medispatcher/",
-	RunAtBench:        false,
-	DropMessageLogDir: "/var/lib/medispatcher-drop/",
+	DATA_DIR:                             "/var/lib/medispatcher/",
+	RunAtBench:                           false,
+	DropMessageLogDir:                    "/var/lib/medispatcher-drop/",
 }
 
 //	TODO: not coroutine safe
