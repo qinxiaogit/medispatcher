@@ -178,3 +178,8 @@ First release of v2.
 #### Features
 
 * 修复特定的topic没有订阅者(或订阅者取消订阅), 但是该topic有消息进入的时候, 频繁查询topic订阅者列表导致数据库QPS过高的问题
+
+### 2.4.9
+#### Features
+
+* 推送失败日志中添加推送服务地址 

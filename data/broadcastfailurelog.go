@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"medispatcher/osutil"
 	"time"
 )
 
@@ -46,6 +47,7 @@ func LogFailure(message *MessageStuct, subscription SubscriptionRecord, errorMes
 		err = errors.New(fmt.Sprintf("Failed to get db: %v", err))
 		return
 	}
+	errorMessage = "medispatcher addr: " + osutil.GetLocalIp() + " " + errorMessage
 
 	// new failure log
 	if logId < 1 {

@@ -4,12 +4,31 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 )
+
+var lastLocalIpUpdateTime = time.Now()
+var localIp string = ""
+var localIpUpdateLock = new(sync.RWMutex)
+
+func init() {
+	go func() {
+		tm := time.NewTicker(time.Second * 10)
+		for {
+			<-tm.C
+			localIpUpdateLock.Lock()
+			localIp = RGetLocalIp()
+			localIpUpdateLock.Unlock()
+		}
+	}()
+}
 
 func FileExists(name string) bool {
 	_, err := os.Stat(name)
@@ -56,6 +75,43 @@ func LookupOsUidGid(name string) (uid int, gid int, err error) {
 		if err != nil {
 			err = errors.New(fmt.Sprintf("Failed to get gid for[%s]: %s", name, err))
 		}
+	}
+	return
+}
+
+func GetLocalIp() string {
+	localIpUpdateLock.RLock()
+	defer localIpUpdateLock.RUnlock()
+	return localIp
+}
+
+func RGetLocalIp() (ip string) {
+	hostName, err := os.Hostname()
+	if err != nil {
+		add, err := net.LookupHost(hostName)
+		if err != nil && len(add) > 0 {
+			return add[0]
+		}
+	}
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+
+		return
+	}
+	for _, a := range addrs {
+		pts := strings.Split(a.String(), "/")
+		if len(pts) < 2 {
+			continue
+		}
+		_ip := pts[0]
+		if strings.Index(ip, ":") >= 0 {
+			continue
+		}
+		if strings.Index(_ip, "127.0.") == 0 {
+			continue
+		}
+		ip = _ip
+		break
 	}
 	return
 }
