@@ -183,3 +183,9 @@ First release of v2.
 #### Features
 
 * 推送失败日志中添加推送服务地址 
+
+### 2.4.10
+#### Fix
+
+* 当某个beanstalkd实例挂掉后,后逐渐导致整个推送block的问题.
+* 当beastalkd连接重建后,可能会导致处于多个等待pub的goroutine最终将消息发到同一个topic的问题.

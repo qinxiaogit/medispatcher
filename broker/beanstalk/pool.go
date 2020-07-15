@@ -10,8 +10,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"git.oschina.net/chaos.su/beanstalkc"
 	"runtime/debug"
+
+	"git.oschina.net/chaos.su/beanstalkc"
 )
 
 type errCheck struct {
@@ -25,7 +26,7 @@ type SafeBrokerkPool struct {
 	poolBroken      map[string]*Broker
 	errCheckChan    chan *errCheck
 	exitStage       chan bool
-	closeLock        *sync.Mutex
+	closeLock       *sync.Mutex
 	reserveCalled   int32
 	reserveStopChan chan bool
 }
@@ -71,16 +72,24 @@ func NewSafeBrokerPool(hostAddr string, concurrency uint32) (pool *SafeBrokerkPo
 
 func (p *SafeBrokerkPool) getOneBroker() *Broker {
 	var br *Broker
-	rand.Seed(time.Now().UnixNano())
-	i := rand.Intn(len(p.poolAvailable))
-	n := 0
-	for _, br = range p.poolAvailable {
-		if i == n {
-			break
+TRY:
+	for {
+		rand.Seed(time.Now().UnixNano())
+		i := rand.Intn(len(p.poolAvailable))
+		n := 0
+		for _, br = range p.poolAvailable {
+			if i == n {
+				if !atomic.CompareAndSwapInt32(&br.rebuildingConnection, 0, 1) {
+					// sleep to avoid cpu consuming overhead when all broker connections are gone.
+					time.Sleep(time.Microsecond * 100)
+					continue TRY
+				}
+				break
+			}
+			n++
 		}
-		n++
+		return br
 	}
-	return br
 }
 
 func (p *SafeBrokerkPool) getOneBrokerByAddr(queueServer string) *Broker {
@@ -125,11 +134,8 @@ func (p *SafeBrokerkPool) Pub(queueName string, data []byte, priority uint32, de
 			p.notifyBrokerErr(br, err)
 		}
 	}()
-	err = br.Use(queueName)
-	if err != nil {
-		return
-	}
-	jobId, err = br.Pub(priority, delay, ttr, data)
+
+	jobId, err = br.Pub(queueName, priority, delay, ttr, data)
 	return
 }
 

@@ -160,7 +160,7 @@ func worker() {
 				if e != nil {
 					log.Println(e)
 				}
-				_, e = br.Pub(1024, 0, 60, b)
+				_, e = br.Pub("", 1024, 0, 60, b)
 
 				if e != nil {
 					log.Print(e)

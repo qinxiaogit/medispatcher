@@ -23,7 +23,7 @@ func pubJob() (err error, br Broker, jobId uint64) {
 	if err == nil {
 		err = br.Use(Test_Queue_Name_1)
 		if err == nil {
-			jobId, err = br.Pub(1025, 0, 30, []byte(Test_Message_1))
+			jobId, err = br.Pub("", 1025, 0, 30, []byte(Test_Message_1))
 		}
 	}
 	return err, br, jobId

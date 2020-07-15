@@ -21,7 +21,8 @@ type Broker interface {
 	Release(jobId uint64, priority uint32, delay uint64) error
 	// Use change the current using topic to which is for topicName, and the subsequential messages will be published to this topic queue.
 	Use(topicName string) error
-	Pub(pri uint32, delay, ttr uint64, body []byte) (jobId uint64, err error)
+	// When topicName is empty, no use command will be called within the Pub function.
+	Pub(topic string, pri uint32, delay, ttr uint64, body []byte) (jobId uint64, err error)
 	// Reserve occupies a job exclusively.
 	Reserve() (jobId uint64, jobBody []byte, err error)
 	ReserveWithTimeout(seconds int) (jobId uint64, jobBody []byte, err error)

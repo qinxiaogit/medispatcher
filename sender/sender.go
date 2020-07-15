@@ -231,7 +231,7 @@ func sendSubscription(msgChan chan *Msg, sub data.SubscriptionRecord, sossr *Sta
 		select {
 		case <-exitSigCh:
 			// this case means just decrease a routine. other routines may take the message from the channel.
-			// TODO: cannot ensure there're other routines taking messages, so messages can be lost in very special cases.
+			// TODO: cannot ensure there're other routines is still taking messages, so messages can be lost in very special cases.
 			if !shouldExit() {
 				return
 			} else {

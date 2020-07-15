@@ -26,9 +26,9 @@ type longCmd struct {
 }
 type Broker struct {
 	beanstalkc.Client
-	addr      string
+	addr string
 	// 任何一个命令都需调用lock
-	locker    *sync.Mutex
+	locker *sync.Mutex
 	// 执行多条命令时独占的lock
 	transLocker *sync.Mutex
 	// watch, unwatch, use
@@ -61,7 +61,7 @@ func New(hostAddr string) (br *Broker, err error) {
 		return
 	}
 	br = &Broker{
-		locker:    new(sync.Mutex),
+		locker:      new(sync.Mutex),
 		transLocker: new(sync.Mutex),
 	}
 	br.Client = *client
@@ -145,9 +145,15 @@ func (br *Broker) rebuildConn() {
 	br.rebuildingConnection = 0
 }
 
-func (br *Broker) Pub(priority uint32, delay, ttr uint64, data []byte) (jobId uint64, err error) {
+func (br *Broker) Pub(topic string, priority uint32, delay, ttr uint64, data []byte) (jobId uint64, err error) {
 	br.lock()
 	defer br.unlock()
+	if len(topic) > 0 {
+		err = br.Use(topic)
+		if err != nil {
+			return
+		}
+	}
 	jobId, _, err = br.Put(priority, delay, ttr, data)
 	return
 }
@@ -250,13 +256,11 @@ func (br *Broker) Delete(jobId uint64) (err error) {
 	return br.Client.Delete(jobId)
 }
 
-
 func (br *Broker) KickJob(jobId uint64) (jerr error) {
 	br.lock()
 	defer br.unlock()
 	return br.Client.KickJob(jobId)
 }
-
 
 func (br *Broker) Reserve() (jobId uint64, jobData []byte, err error) {
 	br.lock()
