@@ -149,9 +149,13 @@ func (br *Broker) Pub(topic string, priority uint32, delay, ttr uint64, data []b
 	br.lock()
 	defer br.unlock()
 	if len(topic) > 0 {
-		err = br.Use(topic)
-		if err != nil {
-			return
+		if topic != br.currentUsingTopic {
+			// use topic again, in case multiple goroutines are blocked on re-buildconnection stage and overrides other's topics.
+			br.currentUsingTopic = topic
+			err = br.Client.Use(topic)
+			if err != nil {
+				return
+			}
 		}
 	}
 	jobId, _, err = br.Put(priority, delay, ttr, data)
