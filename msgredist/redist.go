@@ -69,8 +69,7 @@ func StartAndWait() {
 			var msgR *beanstalk.Msg
 			select {
 			case <-exitChan:
-				// close to stop reserving more messages from the ready queue.
-				brListenPool.Close(true)
+				brListenPool.UnWatch(config.GetConfig().NameOfMainQueue)
 				// with timeInterval timed out, until stop signal received and all messages in the channel have been re-distributed.
 				// ensure all messages that reserved from the queue to the channel have been re-distributed.
 				if reserveTimeoutTimer == nil {
@@ -159,9 +158,6 @@ func StartAndWait() {
 					logger.GetLogger("WARN").Printf("Failed to redispatch message:[%v] to channel [%v] : %v", msg.MsgKey, subChannel, err)
 					logger.GetLogger("DATA").Printf("REDISTFAIL %v %v %v", msg.MsgKey, sub.Subscription_id, jobBody)
 				}
-				if err != nil {
-					logger.GetLogger("WARN").Printf("Failed to delete distributed msg[%v]: %v", msgR.Id, err)
-				}
 			}
 
 			// ensure deleted of job
@@ -175,7 +171,7 @@ func StartAndWait() {
 					case broker.ERROR_JOB_NOT_FOUND:
 						jobDeleted = true
 					default:
-						logger.GetLogger("WARN").Printf("Failed to delete job: [%v] [%v] : %v", msg.MsgKey, msgR.Id, err)
+						logger.GetLogger("WARN").Printf("Failed to delete distributed job: [%v] [%v] : %v", msg.MsgKey, msgR.Id, err)
 						time.Sleep(time.Second * (INTERVAL_OF_RETRY_ON_CONN_FAIL * 2))
 					}
 				}

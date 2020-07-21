@@ -74,6 +74,12 @@ func (p *SafeBrokerkPool) getOneBroker() *Broker {
 	var br *Broker
 TRY:
 	for {
+		select {
+		case <-p.exitStage:
+			return nil
+		default:
+		}
+
 		rand.Seed(time.Now().UnixNano())
 		i := rand.Intn(len(p.poolAvailable))
 		n := 0
@@ -127,6 +133,10 @@ func (p *SafeBrokerkPool) connErrorMonitor() {
 
 func (p *SafeBrokerkPool) Pub(queueName string, data []byte, priority uint32, delay, ttr uint64) (jobId uint64, err error) {
 	br := p.getOneBroker()
+	if br == nil {
+		err = errors.New("no broker avaiable")
+		return
+	}
 	br.transLocker.Lock()
 	defer func() {
 		br.transLocker.Unlock()
