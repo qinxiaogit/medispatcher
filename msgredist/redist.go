@@ -60,6 +60,7 @@ func StartAndWait() {
 	workerRun := func() {
 		defer func() {
 			workerWg.Done()
+			logger.GetLogger("INFO").Printf("redist routine exited.")
 		}()
 
 		var reserveTimeoutTimer *time.Timer
@@ -69,7 +70,8 @@ func StartAndWait() {
 			var msgR *beanstalk.Msg
 			select {
 			case <-exitChan:
-				brListenPool.UnWatch(config.GetConfig().NameOfMainQueue)
+				// close to stop reserving more messages from the ready queue.
+				brListenPool.Close(true)
 				// with timeInterval timed out, until stop signal received and all messages in the channel have been re-distributed.
 				// ensure all messages that reserved from the queue to the channel have been re-distributed.
 				if reserveTimeoutTimer == nil {

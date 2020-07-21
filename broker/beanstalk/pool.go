@@ -85,7 +85,9 @@ TRY:
 		n := 0
 		for _, br = range p.poolAvailable {
 			if i == n {
-				if !atomic.CompareAndSwapInt32(&br.rebuildingConnection, 0, 1) {
+				// prevent all routines from being blocked by the broken broker.
+				if atomic.LoadInt32(&br.rebuildingConnection) == 1 {
+					logger.GetLogger("INFO").Printf("br rebuilding")
 					// sleep to avoid cpu consuming overhead when all broker connections are gone.
 					time.Sleep(time.Microsecond * 100)
 					continue TRY
