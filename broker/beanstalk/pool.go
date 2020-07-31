@@ -111,6 +111,9 @@ func (p *SafeBrokerkPool) getOneBrokerByAddr(queueServer string) *Broker {
 }
 
 func (p *SafeBrokerkPool) notifyBrokerErr(br *Broker, err error) {
+	if strings.Contains(err.Error(), "NOT_FOUND") {
+		return
+	}
 	logger.GetLogger("WARN").Printf("Client ERR: %v, TRACE: %v", err, string(debug.Stack()))
 	p.errCheckChan <- &errCheck{err, br}
 }
@@ -185,6 +188,10 @@ func (p *SafeBrokerkPool) StatsTopic(topicName string) (stats map[string]map[str
 		}
 		brStats, err = br.StatsTopic(topicName)
 		if err != nil {
+			if strings.Contains(err.Error(), "NOT_FOUND") {
+				err = nil
+				continue
+			}
 			p.notifyBrokerErr(br, err)
 			errs = append(errs, err.Error())
 		} else {

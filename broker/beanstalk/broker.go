@@ -44,6 +44,8 @@ type Broker struct {
 
 func createClient(hostAddr string) (*beanstalkc.Client, error) {
 	conn, err := net.DialTimeout("tcp", hostAddr, time.Second*DEFAULT_CONNECTION_TIMEOUT)
+	conn.(*net.TCPConn).SetKeepAlive(false)
+	//conn.(*net.TCPConn).SetKeepAlivePeriod(time.Second * 5)
 	if err != nil {
 		return nil, err
 	}
