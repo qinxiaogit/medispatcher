@@ -1,0 +1,95 @@
+# medispatcher config file. It should be placed to /etc/medispacher.toml
+# TOML v0.2 FORMAT
+DAEMON_USER="www-data"
+
+# 是否是压测实例
+RunAtBench=true
+
+LOG_DIR="/home/logs/medispatcher"
+DATA_DIR="/var/lib/medispatcher/"
+# 是否切分日志。true,则按天切分,否则每种类型的日志都写到同一个文件,可利用外部工具来进行切分,如logrotate.
+SplitLog=false
+
+# 消息(接收)处理者环境。如果有设置，则根据消息处理地址的T_ENV标签（若发现带标签的地址）进行选择处理地址。
+# 如: "PUB","STAG","PROD","DEV"
+RECEPTION_ENV="#{mec.medis.env}"
+
+# 提供RPC服务的地址. 如：缓存清除、参数动态调节等。
+ListenAddr="0.0.0.0:56011"
+DebugAddr=":9898"
+StatisticApiAddr="0.0.0.0:5606"
+PrometheusApiAddr="0.0.0.0:25606"
+
+# 队列服务器地址, 如beanstalkd的为 127.0.0.1:11300
+#QueueServerAddr="10.17.48.14:11300,10.17.48.14:11301"
+QueueServerAddr="#{mec.bench.queue.servers.default_str}"
+# 每个队列上连接池的消息监听连接数。
+QueueServerPoolListenConnCount=1
+# 每个队列上连接池的命令连接数。(用于发送除了监听之外的命令)
+QueueServerPoolCmdConnCount=1
+
+#NameOfMainQueue="event_center_messages"
+NameOfMainQueue="main_queue"
+
+PrefixOfChannelQueue="sub-queue/"
+
+# 开启消息推送日志
+EnableMsgSentLog=true
+
+# 主队列上消息分发并发数
+ListenersOfMainQueue=20
+
+# 每个订阅允许的最大并发推送数
+MaxSendersPerChannel=2000
+
+# 每个订阅(重试时)允许的最大并发推送数
+MaxSendersPerRetryChannel=1000
+
+# 每个订阅默认的并发推送数
+SendersPerChannel=20
+
+# 每个订阅(重试时)默认的并发推送数
+SendersPerRetryChannel=20
+
+# 每个订阅单线程上最小推送间隔时间(ms)。
+IntervalOfSendingForSendRoutine=0
+
+# 每个消息允许的最大处理时间(ms)。
+MaxMessageProcessTime=30000
+
+# (默认的)每个消息允许的最大处理时间(ms)
+DefaultMaxMessageProcessTime=5000
+
+# 重试延时参数. 值越大，下一次推送时间滞后越大.
+# interval = pow(retryTimes+1, 2)*CoeOfIntervalForRetrySendingMsg
+CoeOfIntervalForRetrySendingMsg=30
+
+MsgQueueFaultToleranceListNamePrefix="event_center_message_in_failure_log:"
+
+[Database]
+"#{mec.database.default.write_param}"
+[Redis]
+Addr="#{mec.bench.redis.default_str}"
+DbIndex=1
+
+[AlarmPlatform]
+Gateway="http://alarm.int.jumei.com/interface/rest/api/v1/gateway/receive"
+User="EventServer"
+Password="9f53dd96a497b6db58b271eb73210434"
+
+[AlarmPlatform.PostFieldsMap]
+User="appkey"
+Password="token"
+#告警item所属项目，可自定义.
+project="meman"
+##告警item所属主机， 不填写默认为空.
+host=""
+##告警item的邮件主题，不填写默认为“聚美统一告警平台报警通知”.
+Subject="title"
+##告警item的内容.
+Content="content"
+##报警接收人.
+Recipient="auth"
+## 1邮件 2短信 3微信.
+type="00000111"
+
