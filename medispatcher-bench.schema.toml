@@ -69,8 +69,7 @@ MsgQueueFaultToleranceListNamePrefix="event_center_message_in_failure_log:"
 [Database]
 "#{mec.database.default.write_param}"
 [Redis]
-Addr="#{mec.bench.redis.default_str}"
-DbIndex=1
+"#{mec.bench.redis.default_str_v1}"
 
 [AlarmPlatform]
 Gateway="http://alarm.int.jumei.com/interface/rest/api/v1/gateway/receive"
