@@ -2,6 +2,7 @@ package connection
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,7 +14,12 @@ import (
 	"net"
 	"reflect"
 	"strconv"
+	"strings"
+	"sync"
 	"time"
+
+	doveclientCli "gitlab.int.jumei.com/JMArch/go-doveclient-cli"
+	clientv3 "go.etcd.io/etcd/clientv3"
 )
 
 const (
@@ -242,6 +248,8 @@ func StartServer() {
 	go connCounter(&counterCh)
 	go receiveStats()
 	go startConsole()
+	// 迁移到k8s后, 管理后台不能够直接调用推送服务的api, 因此通过etcd转发相关操作请求
+	go adminEventWatch()
 
 	for !isServerStopping() {
 		inConn, err := server.Accept()
@@ -393,3 +401,116 @@ func sendStats(msg StatsMessage) {
 	statsInChan <- msg
 	releaseStatsRWLock()
 }
+
+// adminEventWatch 通过watch etcd从而响应消息中心后台的操作请求
+// 通过k8s运行推送服务的时候, 只能通过这种方法获取到后台对订阅配置的修改.
+func adminEventWatch() {
+	dc := doveclientCli.NewDoveClient("unix:////var/lib/doveclient/doveclient.sock")
+	status, result, err := dc.Call("GetEtcdAddr", map[string]interface{}{})
+	if err != nil {
+		logger.GetLogger("ERROR").Printf("获取配置环境信息时发生错误: %v", err)
+		panic(err)
+	}
+	dc.Close()
+
+	if status != "ok" {
+		logger.GetLogger("ERROR").Printf("调用doveclient接口失败: status=%s, result=%s", status, result)
+		panic(fmt.Errorf("调用doveclient接口失败: status=%s, result=%s", status, result))
+	}
+
+	addrs := []string{}
+	if err := json.Unmarshal(result, &addrs); err != nil || len(result) == 0 {
+		logger.GetLogger("ERROR").Printf("从doveclient api返回结果中解析etcd地址失败: result=%s, err=%v", result, err)
+		panic(fmt.Errorf("从doveclient api返回结果中解析etcd地址失败: result=%s, err=%v", result, err))
+	}
+
+	var once sync.Once
+	var client *clientv3.Client
+	var rev int64
+	bootstrap := true
+try:
+	if !bootstrap {
+		if client != nil {
+			client.Close()
+		}
+		logger.GetLogger("WARN").Printf("[etcd watch] Re create connection")
+		time.Sleep(1 * time.Second)
+	}
+	bootstrap = false
+
+	client, err = clientv3.New(clientv3.Config{
+		Endpoints:            addrs,
+		DialTimeout:          3 * time.Second,
+		DialKeepAliveTime:    5 * time.Second,
+		DialKeepAliveTimeout: 3 * time.Second,
+		AutoSyncInterval:     10 * time.Second,
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	// 上报GetDefaultSubscriptionSettings配置
+	once.Do(func() {
+		// GetSubscriptionParams 用处不大, 暂不实现
+		re, _ := rpc.GetHandlerContainer().Run("GetDefaultSubscriptionSettings", nil)
+		body, _ := json.Marshal(re)
+		if _, err := client.Put(context.Background(), "__mec.event.GetDefaultSubscriptionSettings", string(body)); err != nil {
+			panic(err)
+		}
+	})
+
+	logger.GetLogger("INFO").Printf("[etcd watch] enter watch loop")
+
+	// __mec.event.ClearDataCache
+	// __mec.event.SetDefaultAlarm
+	// __mec.event.SetSubscriptionParams.{subscriptionID}
+	// __mec.event.GetSubscriptionParams.{subscriptionID}
+	// __mec.event.GetDefaultSubscriptionSettings
+	// __mec.event.CleanTopic
+	watchOpts := []clientv3.OpOption{clientv3.WithPrefix()}
+	if rev > 0 {
+		watchOpts = append(watchOpts, clientv3.WithRev(rev))
+	}
+	watchChan := client.Watch(context.Background(), "__mec.event.", watchOpts...)
+	for {
+		select {
+		case resp, ok := <-watchChan:
+			if !ok || resp.Err() != nil {
+				goto try
+			}
+			rev = resp.Header.Revision
+
+			for _, ev := range resp.Events {
+				switch ev.Type {
+				case clientv3.EventTypePut:
+					switch strings.Split(string(ev.Kv.Key), ".")[2] {
+					case "ClearDataCache", "SetDefaultAlarm", "SetSubscriptionParams", "CleanTopic":
+						args := map[string]interface{}{}
+						// ClearDataCache 默认传入的参数是"[]"会导致解析异常, 所以这里忽略ClearDataCache参数的解析错误
+						if err := json.Unmarshal(ev.Kv.Value, &args); err != nil && strings.Split(string(ev.Kv.Key), ".")[2] != "ClearDataCache" {
+							logger.GetLogger("INFO").Printf("[etcd watch] type=%d; key=%s; value=%s; rev=%d; err=%s", ev.Type, ev.Kv.Key, ev.Kv.Value, rev, "Error parsing parameter")
+							continue
+						}
+
+						re, err := rpc.GetHandlerContainer().Run(strings.Split(string(ev.Kv.Key), ".")[2], args)
+						if err != nil {
+							logger.GetLogger("INFO").Printf("[etcd watch] type=%d; key=%s; value=%s; rev=%d; err=%v", ev.Type, ev.Kv.Key, ev.Kv.Value, rev, err)
+							continue
+						}
+						logger.GetLogger("INFO").Printf("[etcd watch] type=%d; key=%s; value=%s; rev=%d; result=%v", ev.Type, ev.Kv.Key, ev.Kv.Value, rev, re)
+					default:
+						logger.GetLogger("INFO").Printf("[etcd watch] type=%d; key=%s; value=%s; rev=%d; err=%s", ev.Type, ev.Kv.Key, ev.Kv.Value, rev, "Ignored actions")
+					}
+				case clientv3.EventTypeDelete:
+					logger.GetLogger("INFO").Printf("[etcd watch] type=%d; key=%s; value=%s; rev=%d", ev.Type, ev.Kv.Key, ev.Kv.Value, rev)
+					if strings.HasPrefix(string(ev.Kv.Key), "__mec.event.SetSubscriptionParams") {
+						continue
+					}
+				default:
+					logger.GetLogger("INFO").Printf("[etcd watch] type=%d; key=%s; value=%s; rev=%d; err=%s", ev.Type, ev.Kv.Key, ev.Kv.Value, rev, "unknown operation")
+				}
+			}
+		}
+	}
+}
+
