@@ -189,3 +189,8 @@ First release of v2.
 
 * 当某个beanstalkd实例挂掉后,后逐渐导致整个推送block的问题.
 * 当beastalkd连接重建后,可能会导致处于多个等待pub的goroutine最终将消息发到同一个topic的问题.
+
+### 2.5.0
+#### Fix
+
+* 支持通过etcd watch管理后台的配置变更(因为要迁移到k8s)
