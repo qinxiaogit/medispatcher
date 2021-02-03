@@ -67,7 +67,7 @@ CoeOfIntervalForRetrySendingMsg=30
 MsgQueueFaultToleranceListNamePrefix="event_center_message_in_failure_log:"
 
 [Database]
-"#{mec.database.default.write_param}"
+"#{mec.bench.database.default.write_param}"
 [Redis]
 "#{mec.bench.redis.default_str_v1}"
 
