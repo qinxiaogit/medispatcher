@@ -5,8 +5,8 @@ DAEMON_USER="www-data"
 # 是否是压测实例
 RunAtBench=true
 
-LOG_DIR="/home/logs/medispatcher"
-DATA_DIR="/var/lib/medispatcher/"
+LOG_DIR="/var/log/jm-event-center/bench-medispatcher/"
+DATA_DIR="/var/lib/bench-medispatcher/"
 # 是否切分日志。true,则按天切分,否则每种类型的日志都写到同一个文件,可利用外部工具来进行切分,如logrotate.
 SplitLog=false
 
@@ -15,10 +15,10 @@ SplitLog=false
 RECEPTION_ENV="#{mec.medis.env}"
 
 # 提供RPC服务的地址. 如：缓存清除、参数动态调节等。
-ListenAddr="0.0.0.0:56011"
-DebugAddr=":9898"
-StatisticApiAddr="0.0.0.0:5606"
-PrometheusApiAddr="0.0.0.0:25606"
+ListenAddr="0.0.0.0:5609"
+DebugAddr=":19899"
+StatisticApiAddr="0.0.0.0:56089"
+PrometheusApiAddr="0.0.0.0:25609"
 
 # 队列服务器地址, 如beanstalkd的为 127.0.0.1:11300
 #QueueServerAddr="10.17.48.14:11300,10.17.48.14:11301"
@@ -72,7 +72,7 @@ MsgQueueFaultToleranceListNamePrefix="event_center_message_in_failure_log:"
 "#{mec.bench.redis.default_str_v1}"
 
 [AlarmPlatform]
-Gateway="http://alarm.int.jumei.com/interface/rest/api/v1/gateway/receive"
+Gateway="http://alarm.pub.jumei.com/interface/rest/api/v1/gateway/receive"
 User="EventServer"
 Password="9f53dd96a497b6db58b271eb73210434"
 
@@ -91,4 +91,3 @@ Content="content"
 Recipient="auth"
 ## 1邮件 2短信 3微信.
 type="00000111"
-
