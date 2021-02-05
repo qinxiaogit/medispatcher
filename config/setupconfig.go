@@ -35,6 +35,7 @@ var config = &Config{
 	PrometheusApiAddr:                    "0.0.0.0:25606",
 	NameOfMainQueue:                      "main-incoming-queue",
 	PrefixOfChannelQueue:                 "sub-queue/",
+	MedisPerMaxConsumerQueueNum:          8,
 	QueueServerAddr:                      "127.0.0.1:11300",
 	QueueServerPoolListenConnCount:       2,
 	QueueServerPoolCmdConnCount:          1,

@@ -18,6 +18,14 @@ import (
 
 var flags = flag.NewFlagSet("medispatcher", flag.ExitOnError)
 
+var configFile string
+
+// GetConfigPath 得到配置文件路径
+// 该方法必须在ParseConfig方法之后调用
+func GetConfigPath() string {
+	return configFile
+}
+
 func GetConfig() Config {
 	if config == nil {
 		panic("config not intialized, you should call config.Setup() first!")
@@ -54,7 +62,7 @@ func TraverseTomlTree(t *toml.TomlTree) map[string]interface{} {
 
 // ParseConfig 解析配置文件/etc/medispatcher.toml
 func ParseConfig() (*Config, error) {
-	var configFile, defaultConfigFile string
+	var defaultConfigFile string
 	var err error
 	if runtime.GOOS == "windows" {
 		clientPath, err := filepath.Abs(os.Args[0])

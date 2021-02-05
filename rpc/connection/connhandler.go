@@ -2,7 +2,6 @@ package connection
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,12 +13,7 @@ import (
 	"net"
 	"reflect"
 	"strconv"
-	"strings"
-	"sync"
 	"time"
-
-	doveclientCli "gitlab.int.jumei.com/JMArch/go-doveclient-cli"
-	clientv3 "go.etcd.io/etcd/clientv3"
 )
 
 const (
@@ -249,7 +243,7 @@ func StartServer() {
 	go receiveStats()
 	go startConsole()
 	// 迁移到k8s后, 管理后台不能够直接调用推送服务的api, 因此通过etcd转发相关操作请求
-	go adminEventWatch()
+	// go adminEventWatch()
 
 	for !isServerStopping() {
 		inConn, err := server.Accept()
@@ -404,7 +398,7 @@ func sendStats(msg StatsMessage) {
 
 // adminEventWatch 通过watch etcd从而响应消息中心后台的操作请求
 // 通过k8s运行推送服务的时候, 只能通过这种方法获取到后台对订阅配置的修改.
-func adminEventWatch() {
+/*func adminEventWatch() {
 	dc := doveclientCli.NewDoveClient("unix:////var/lib/doveclient/doveclient.sock")
 	status, result, err := dc.Call("GetEtcdAddr", map[string]interface{}{})
 	if err != nil {
@@ -512,5 +506,4 @@ try:
 			}
 		}
 	}
-}
-
+}*/

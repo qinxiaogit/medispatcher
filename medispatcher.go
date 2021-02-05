@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"medispatcher/balance"
 	"medispatcher/config"
 	"medispatcher/logger"
 	"medispatcher/msgredist"
@@ -14,11 +15,13 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"path"
 	"runtime"
 	"runtime/debug"
 	"syscall"
 	"time"
 
+	"github.com/fsnotify/fsnotify"
 	l "github.com/sunreaver/logger"
 )
 
@@ -34,6 +37,9 @@ func main() {
 
 	l.InitLogger(config.GetConfig().LOG_DIR, l.InfoLevel, time.FixedZone("Asia/Shanghai", 8*3600))
 	l.LoggerByDay.Debugw("Setup", "Config", config.GetConfig())
+
+	// 将当前 推送服务实例 按策略加入到 特定的一组队列实例 的消费者列表中去.
+	balance.NewBalance().Startup()
 
 	// 启动prometheus统计功能
 	pushstatistics.PrometheusStatisticsStart(config.GetConfig().PrometheusApiAddr)
@@ -51,6 +57,7 @@ func main() {
 	}
 
 	go ProcessSysSignal()
+	go watchConfigFile()
 	go rpcSrv.StartServer()
 	go recoverwatcher.StartAndWait()
 	go msgredist.StartAndWait()
@@ -75,6 +82,9 @@ func ProcessSysSignal() {
 		go func(sig *os.Signal) {
 			switch *sig {
 			case syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT:
+				// 将当前 推送服务实例 从特定的一组队列实例的消费者列表中移除, 以便其他新启动的推送服务实例能及时的加入到这些队列的消费者列表中去.
+				balance.NewBalance().Over()
+
 				exitSigSentLock <- true
 				if !exitSigSent {
 					logger.GetLogger("INFO").Print("Quit signal received! exit...\n")
@@ -126,4 +136,47 @@ func ProcessSysSignal() {
 			}
 		}(&osSingal)
 	}
+}
+
+// watchConfigFile 监控配置文件所在的目录, 配置文件发生变更的时候, 给当前进程发送SIGQUIT信号
+func watchConfigFile() {
+	configFile := config.GetConfigPath()
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		panic(err)
+	}
+	defer watcher.Close()
+
+	if err := watcher.Add(path.Dir(configFile)); err != nil {
+		panic(err)
+	}
+
+	for {
+		select {
+		case ev, ok := <-watcher.Events:
+			if !ok {
+				break
+			}
+
+			if path.Base(ev.Name) != path.Base(configFile) {
+				continue
+			}
+
+			switch ev.Op {
+			case fsnotify.Create, fsnotify.Write, fsnotify.Remove, fsnotify.Rename:
+				if err := syscall.Kill(os.Getpid(), syscall.SIGINT); err != nil {
+					logger.GetLogger("INFO").Printf("Configuration file changed(%s), kill -SIGINT\n", configFile)
+				}
+				return
+			}
+		case err, ok := <-watcher.Errors:
+			if !ok {
+				break
+			}
+
+			logger.GetLogger("WARN").Printf("watcher error:%v\n", err)
+		}
+	}
+
+	// TODO 文件监控存在异常的时候, 可以重新添加监控 或 忽略文件监控
 }

@@ -16,6 +16,7 @@ type Config struct {
 	RECEPTION_ENV string
 
 	QueueServerType                string
+	MedisPerMaxConsumerQueueNum    int
 	QueueServerAddr                string
 	QueueServerPoolCmdConnCount    uint32
 	QueueServerPoolListenConnCount uint32
