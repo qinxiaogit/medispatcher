@@ -14,6 +14,9 @@ SplitLog=false
 # 如: "PUB","STAG","PROD","DEV"
 RECEPTION_ENV="#{mec.medis.env}"
 
+# 每个推送实例最多消费几个beanstalkd实例(防止连接数打爆)
+MedisPerMaxConsumerQueueNum = "#{mec.medis.MedisPerMaxConsumerQueueNum}"
+
 # 提供RPC服务的地址. 如：缓存清除、参数动态调节等。
 ListenAddr="0.0.0.0:5602"
 DebugAddr=":20000"
