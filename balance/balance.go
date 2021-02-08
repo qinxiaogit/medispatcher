@@ -193,6 +193,8 @@ func (b *Balance) Startup() {
 			if err != nil {
 				return clientv3.NoLease, err
 			}
+			defer session.Close()
+
 			mu := concurrency.NewMutex(session, lockKey)
 
 			ctx, cancel = context.WithTimeout(context.TODO(), time.Second*5)
@@ -302,6 +304,7 @@ func (b *Balance) selectQueue(etcdCli *clientv3.Client) ([]string, error) {
 	}
 
 	// 检查etcd, 获得每个 队列实例 下 有多少个 推送服务 实例.
+	// queue addr => medis addr => struct{}
 	queue2medis := map[string]map[string]struct{}{}
 	for _, kv := range resp.Kvs {
 		arr := strings.Split(string(kv.Key), ".")
@@ -324,9 +327,11 @@ func (b *Balance) selectQueue(etcdCli *clientv3.Client) ([]string, error) {
 		}
 	}
 
-	// 将所有的 队列实例 按其绑定的 推送服务实例数, 分组.
+	// 将所有的 队列实例 按其绑定的 推送服务实例数 分组.
+	// num2queue: 推送服务数量 => [队列实例1, 队列实例2]
 	num2queue := map[int][]string{}
 	medisnums := make([]int, 0, len(queue2medis))
+	// queue2medis: queue addr => medis addr => struct{}
 	for queue, medisInsts := range queue2medis {
 		if _, ok := num2queue[len(medisInsts)]; !ok {
 			num2queue[len(medisInsts)] = []string{}
@@ -337,6 +342,7 @@ func (b *Balance) selectQueue(etcdCli *clientv3.Client) ([]string, error) {
 
 	sort.Ints(medisnums)
 
+	// 最终本推送服务将要使用的队列
 	useQueues := make([]string, 0, config.GetConfig().MedisPerMaxConsumerQueueNum)
 exit:
 	for _, num := range medisnums {
