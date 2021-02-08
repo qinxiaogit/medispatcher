@@ -101,6 +101,7 @@ func NewBalance() *Balance {
 
 	reginfo["RECEPTION_ENV"] = config.GetConfig().RECEPTION_ENV
 	reginfo["RunAtBench"] = config.GetConfig().RunAtBench
+	reginfo["MedisPerMaxConsumerQueueNum"] = config.GetConfig().MedisPerMaxConsumerQueueNum
 
 	balanceInst.reginfo, err = json.Marshal(reginfo)
 	if err != nil {
