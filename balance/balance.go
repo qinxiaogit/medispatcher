@@ -22,11 +22,11 @@ var lock sync.Mutex
 
 const (
 	// 记录基础信息的etcd key(消息中心管理后台用到这个信息)
-	baseInfoKey = "__mec.medis.info.%s"
+	baseInfoKey = "__mec.medis.info#%s"
 	// 记录队列消费者信息的key的前缀
-	queueConsumerKeyPrefix = "__mec.medis.queue_customer."
+	queueConsumerKeyPrefix = "__mec.medis.queue_customer#"
 	// 记录每个队列消费者的etcd key(为新启动的medis分配队列)
-	queueConsumerKey = queueConsumerKeyPrefix + "%s.%s"
+	queueConsumerKey = queueConsumerKeyPrefix + "%s#%s"
 	// 全局锁对应的key(为新启动medis分配队列的时候要加分布式锁)
 	lockKey = "__mec.medis.lock"
 )
@@ -307,17 +307,17 @@ func (b *Balance) selectQueue(etcdCli *clientv3.Client) ([]string, error) {
 	// queue addr => medis addr => struct{}
 	queue2medis := map[string]map[string]struct{}{}
 	for _, kv := range resp.Kvs {
-		arr := strings.Split(string(kv.Key), ".")
-		if _, ok := queue2medis[arr[3]]; ok {
-			queue2medis[arr[3]] = map[string]struct{}{}
+		arr := strings.Split(string(kv.Key), "#")
+		if _, ok := queue2medis[arr[1]]; ok {
+			queue2medis[arr[1]] = map[string]struct{}{}
 		}
 
 		// 异常数据
-		if arr[4] == b.ip {
+		if arr[2] == b.ip {
 			continue
 		}
 
-		queue2medis[arr[3]][arr[4]] = struct{}{}
+		queue2medis[arr[1]][arr[2]] = struct{}{}
 	}
 
 	// 加入没有被任何 推送服务实例 消费的 队列实例
