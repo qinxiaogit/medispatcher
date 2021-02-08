@@ -131,10 +131,9 @@ func (b *Balance) Startup() {
 	// 该函数会被调用2次
 	// 第1次同步调用, 所有流程必须成功; 第1次调用入参leaseID == clientv3.NoLease
 	// 第2次单独一个协程运行, 失败会重试; 第2次调用入参leaseID是第一次调用的返回值
-	var bootstrap = func(leaseID clientv3.LeaseID) (clientv3.LeaseID, error) {
+	var bootstrap = func(etcdCli *clientv3.Client, leaseID clientv3.LeaseID) (*clientv3.Client, clientv3.LeaseID, error) {
 		var leaseIDArg clientv3.LeaseID = leaseID
 		var err error
-		var etcdCli *clientv3.Client
 		var keepChan <-chan *clientv3.LeaseKeepAliveResponse
 		var grantResp *clientv3.LeaseGrantResponse
 		var session *concurrency.Session
@@ -162,7 +161,7 @@ func (b *Balance) Startup() {
 		})
 		if err != nil {
 			if leaseID == clientv3.NoLease {
-				return clientv3.NoLease, err
+				return etcdCli, clientv3.NoLease, err
 			}
 			logger.GetLogger("DEBUG").Printf("操作失败:%v, 即将执行重试操作", err)
 			goto retry
@@ -171,7 +170,7 @@ func (b *Balance) Startup() {
 		grantResp, err = etcdCli.Grant(context.TODO(), 10)
 		if err != nil {
 			if leaseID == clientv3.NoLease {
-				return clientv3.NoLease, err
+				return etcdCli, clientv3.NoLease, err
 			}
 			logger.GetLogger("DEBUG").Printf("操作失败:%v, 即将执行重试操作", err)
 			goto retry
@@ -181,7 +180,7 @@ func (b *Balance) Startup() {
 		_, err = etcdCli.Put(context.TODO(), fmt.Sprintf(baseInfoKey, b.ip), string(b.reginfo), clientv3.WithLease(grantResp.ID))
 		if err != nil {
 			if leaseID == clientv3.NoLease {
-				return clientv3.NoLease, err
+				return etcdCli, clientv3.NoLease, err
 			}
 			logger.GetLogger("DEBUG").Printf("操作失败:%v, 即将执行重试操作", err)
 			goto retry
@@ -191,7 +190,7 @@ func (b *Balance) Startup() {
 			// 第一次调用该函数
 			session, err = concurrency.NewSession(etcdCli)
 			if err != nil {
-				return clientv3.NoLease, err
+				return etcdCli, clientv3.NoLease, err
 			}
 			defer session.Close()
 
@@ -204,14 +203,14 @@ func (b *Balance) Startup() {
 			if err != nil {
 				mu.Unlock(ctx)
 				cancel()
-				return clientv3.NoLease, err
+				return etcdCli, clientv3.NoLease, err
 			}
 
 			if err = b.createQueue2Medis(etcdCli, grantResp.ID); err != nil {
 				etcdCli.Revoke(context.TODO(), grantResp.ID)
 				mu.Unlock(ctx)
 				cancel()
-				return clientv3.NoLease, err
+				return etcdCli, clientv3.NoLease, err
 			}
 
 			logger.GetLogger("DEBUG").Printf("全部队列实例列表:%s, 当前推送服务实例分配到的队列实例列表:%s", config.GetConfig().QueueServerAddr, strings.Join(b.consumerAddrs, ","))
@@ -257,15 +256,15 @@ func (b *Balance) Startup() {
 			}
 		}
 
-		return leaseID, nil
+		return etcdCli, leaseID, nil
 	}
 
-	leaseID, err := bootstrap(clientv3.NoLease)
+	etcdCli, leaseID, err := bootstrap(nil, clientv3.NoLease)
 	if err != nil {
 		logger.GetLogger("DEBUG").Printf("初始化环境失败:%v, 进程退出", err)
 		panic(fmt.Errorf("初始化环境失败:%v, 进程退出", err))
 	}
-	go bootstrap(leaseID)
+	go bootstrap(etcdCli, leaseID)
 }
 
 // Over 进程退出, 执行相应的清理操作
