@@ -84,6 +84,7 @@ func NewBalance() *Balance {
 	reginfo := map[string]interface{}{}
 	if config.GetConfig().ListenAddr != "" && strings.Index(config.GetConfig().ListenAddr, ":") != -1 {
 		reginfo["ListenAddr"] = balanceInst.ip + ":" + strings.Split(config.GetConfig().ListenAddr, ":")[1]
+		balanceInst.listenAddr = balanceInst.ip + ":" + strings.Split(config.GetConfig().ListenAddr, ":")[1]
 	}
 
 	if config.GetConfig().DebugAddr != "" && strings.Index(config.GetConfig().DebugAddr, ":") != -1 {
@@ -120,8 +121,11 @@ type Balance struct {
 	// 当前实例实际消费的队列实例
 	consumerAddrs []string
 	// 当前环境的本地ip
-	ip           string
-	reginfo      []byte
+	ip string
+	// 需要上报到etcd的推送服务配置
+	reginfo    []byte
+	listenAddr string
+	// 退出
 	willExitChan chan int
 	exitChan     chan int
 }
@@ -177,7 +181,7 @@ func (b *Balance) Startup() {
 		}
 
 		// 上报基本注册信息
-		_, err = etcdCli.Put(context.TODO(), fmt.Sprintf(baseInfoKey, b.ip), string(b.reginfo), clientv3.WithLease(grantResp.ID))
+		_, err = etcdCli.Put(context.TODO(), fmt.Sprintf(baseInfoKey, b.listenAddr), string(b.reginfo), clientv3.WithLease(grantResp.ID))
 		if err != nil {
 			if leaseID == clientv3.NoLease {
 				return etcdCli, clientv3.NoLease, err
