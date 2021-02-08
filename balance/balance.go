@@ -281,7 +281,7 @@ func (b *Balance) Over() {
 // createQueue2Medis 建立queue inst到medis inst的关系
 func (b *Balance) createQueue2Medis(etcdCli *clientv3.Client, leaseID clientv3.LeaseID) error {
 	for _, addr := range b.consumerAddrs {
-		if _, err := etcdCli.Put(context.TODO(), fmt.Sprintf(queueConsumerKey, addr, b.ip), time.Now().Format("2006-01-02 15:04:05"), clientv3.WithLease(leaseID)); err != nil {
+		if _, err := etcdCli.Put(context.TODO(), fmt.Sprintf(queueConsumerKey, addr, b.listenAddr), time.Now().Format("2006-01-02 15:04:05"), clientv3.WithLease(leaseID)); err != nil {
 			return err
 		}
 	}
@@ -316,7 +316,7 @@ func (b *Balance) selectQueue(etcdCli *clientv3.Client) ([]string, error) {
 		}
 
 		// 异常数据
-		if arr[2] == b.ip {
+		if arr[2] == b.listenAddr {
 			continue
 		}
 
