@@ -29,6 +29,8 @@ const (
 	queueConsumerKey = queueConsumerKeyPrefix + "%s#%s"
 	// 全局锁对应的key(为新启动medis分配队列的时候要加分布式锁)
 	lockKey = "__mec.medis.lock"
+	// 推送服务在etcd注册的租约的时间
+	grantTime = 10
 )
 
 // NewBalance 返回Balance的单例
@@ -81,33 +83,27 @@ func NewBalance() *Balance {
 	}
 
 	// 推送服务要注册到etcd的信息(消息中心管理后台需要这些信息)
-	reginfo := map[string]interface{}{}
+	balanceInst.reginfo = map[string]interface{}{}
 	if config.GetConfig().ListenAddr != "" && strings.Index(config.GetConfig().ListenAddr, ":") != -1 {
-		reginfo["ListenAddr"] = balanceInst.ip + ":" + strings.Split(config.GetConfig().ListenAddr, ":")[1]
+		balanceInst.reginfo["ListenAddr"] = balanceInst.ip + ":" + strings.Split(config.GetConfig().ListenAddr, ":")[1]
 		balanceInst.listenAddr = balanceInst.ip + ":" + strings.Split(config.GetConfig().ListenAddr, ":")[1]
 	}
 
 	if config.GetConfig().DebugAddr != "" && strings.Index(config.GetConfig().DebugAddr, ":") != -1 {
-		reginfo["DebugAddr"] = balanceInst.ip + ":" + strings.Split(config.GetConfig().DebugAddr, ":")[1]
+		balanceInst.reginfo["DebugAddr"] = balanceInst.ip + ":" + strings.Split(config.GetConfig().DebugAddr, ":")[1]
 	}
 
 	if config.GetConfig().StatisticApiAddr != "" && strings.Index(config.GetConfig().StatisticApiAddr, ":") != -1 {
-		reginfo["StatisticApiAddr"] = balanceInst.ip + ":" + strings.Split(config.GetConfig().StatisticApiAddr, ":")[1]
+		balanceInst.reginfo["StatisticApiAddr"] = balanceInst.ip + ":" + strings.Split(config.GetConfig().StatisticApiAddr, ":")[1]
 	}
 
 	if config.GetConfig().PrometheusApiAddr != "" && strings.Index(config.GetConfig().PrometheusApiAddr, ":") != -1 {
-		reginfo["PrometheusApiAddr"] = balanceInst.ip + ":" + strings.Split(config.GetConfig().PrometheusApiAddr, ":")[1]
+		balanceInst.reginfo["PrometheusApiAddr"] = balanceInst.ip + ":" + strings.Split(config.GetConfig().PrometheusApiAddr, ":")[1]
 	}
 
-	reginfo["RECEPTION_ENV"] = config.GetConfig().RECEPTION_ENV
-	reginfo["RunAtBench"] = config.GetConfig().RunAtBench
-	reginfo["MedisPerMaxConsumerQueueNum"] = config.GetConfig().MedisPerMaxConsumerQueueNum
-
-	balanceInst.reginfo, err = json.Marshal(reginfo)
-	if err != nil {
-		logger.GetLogger("DEBUG").Printf("编码推送服务配置信息失败:%v", err)
-		panic(fmt.Errorf("编码推送服务配置信息失败:%v", err))
-	}
+	balanceInst.reginfo["RECEPTION_ENV"] = config.GetConfig().RECEPTION_ENV
+	balanceInst.reginfo["RunAtBench"] = config.GetConfig().RunAtBench
+	balanceInst.reginfo["MedisPerMaxConsumerQueueNum"] = config.GetConfig().MedisPerMaxConsumerQueueNum
 
 	balanceInst.willExitChan = make(chan int)
 	balanceInst.exitChan = make(chan int)
@@ -124,7 +120,7 @@ type Balance struct {
 	// 当前环境的本地ip
 	ip string
 	// 需要上报到etcd的推送服务配置
-	reginfo    []byte
+	reginfo    map[string]interface{}
 	listenAddr string
 	// 退出
 	willExitChan chan int
@@ -172,7 +168,7 @@ func (b *Balance) Startup() {
 			goto retry
 		}
 
-		grantResp, err = etcdCli.Grant(context.TODO(), 10)
+		grantResp, err = etcdCli.Grant(context.TODO(), grantTime)
 		if err != nil {
 			if leaseID == clientv3.NoLease {
 				return etcdCli, clientv3.NoLease, err
@@ -182,7 +178,7 @@ func (b *Balance) Startup() {
 		}
 
 		// 上报基本注册信息
-		_, err = etcdCli.Put(context.TODO(), fmt.Sprintf(baseInfoKey, b.listenAddr), string(b.reginfo), clientv3.WithLease(grantResp.ID))
+		_, err = etcdCli.Put(context.TODO(), fmt.Sprintf(baseInfoKey, b.listenAddr), string(b.MarshalRegInfo()), clientv3.WithLease(grantResp.ID))
 		if err != nil {
 			if leaseID == clientv3.NoLease {
 				return etcdCli, clientv3.NoLease, err
@@ -279,10 +275,17 @@ func (b *Balance) Over() {
 	logger.GetLogger("DEBUG").Printf("balance流程结束")
 }
 
+// MarshalRegInfo 序列化注册信息
+func (b *Balance) MarshalRegInfo() []byte {
+	b.reginfo["ReportDate"] = time.Now().Format("2006-01-02 15:04:05")
+	body, _ := json.Marshal(b.reginfo)
+	return body
+}
+
 // createQueue2Medis 建立queue inst到medis inst的关系
 func (b *Balance) createQueue2Medis(etcdCli *clientv3.Client, leaseID clientv3.LeaseID) error {
 	for _, addr := range b.consumerAddrs {
-		if _, err := etcdCli.Put(context.TODO(), fmt.Sprintf(queueConsumerKey, addr, b.listenAddr), time.Now().Format("2006-01-02 15:04:05"), clientv3.WithLease(leaseID)); err != nil {
+		if _, err := etcdCli.Put(context.TODO(), fmt.Sprintf(queueConsumerKey, addr, b.listenAddr), string(b.MarshalRegInfo()), clientv3.WithLease(leaseID)); err != nil {
 			return err
 		}
 	}
@@ -307,7 +310,7 @@ func (b *Balance) selectQueue(etcdCli *clientv3.Client) ([]string, error) {
 		return queues[:config.GetConfig().MedisPerMaxConsumerQueueNum], nil
 	}
 
-	// 检查etcd, 获得每个 队列实例 下 有多少个 推送服务 实例.
+	// 检查etcd, 找到每个 队列实例 下 有多少个 <有效的>推送服务 实例.
 	// queue addr => medis addr => struct{}
 	queue2medis := map[string]map[string]struct{}{}
 	for _, kv := range resp.Kvs {
@@ -327,26 +330,41 @@ func (b *Balance) selectQueue(etcdCli *clientv3.Client) ([]string, error) {
 			continue
 		}
 
-		if _, ok := queue2medis[arr[1]]; !ok {
-			queue2medis[arr[1]] = map[string]struct{}{}
+		// 如果推送服务崩溃而不是正常退出, 那么对应推送服务注册的信息要等待grantTime后才过期, 可能会造成某个队列实例仍然在被推送服务消费的假象
+		// 推送服务存活检测, 如果没有存活则认为特定的队列实例没有被特定的推送服务实例消费
+		reginfo := map[string]interface{}{}
+		if err := json.Unmarshal(kv.Value, &reginfo); err == nil {
+			if listenAddr, ok := reginfo["ListenAddr"].(string); ok && listenAddr != b.reginfo["ListenAddr"].(string) {
+				conn, err := net.DialTimeout("tcp", listenAddr, time.Second*2)
+				// 特定的推送服务似乎已经崩溃, 因此并不能算作特定队列实例的有效消费者
+				if err != nil {
+					continue
+				}
+				conn.Close()
+			}
 		}
 
-		// 异常数据
+		// 尝试为当前推送服务实例分配队列实例的时候, 发现当前实例已经在消费特定的队列实例了, 这种情况不可能发生(可能是前一个实例崩溃, 而新启动的实例使用了相同的ip), 所以这时候认为特定的队列实例下的这个消费者并不是有效的.
 		if arr[2] == b.listenAddr {
 			continue
+		}
+
+		if _, ok := queue2medis[arr[1]]; !ok {
+			queue2medis[arr[1]] = map[string]struct{}{}
 		}
 
 		queue2medis[arr[1]][arr[2]] = struct{}{}
 	}
 
-	// 加入没有被任何 推送服务实例 消费的 队列实例
+	// queues 在这里是所有有效的推送服务列表
+	// queues 和上一步的数据queue2medis 合并, 最终得到每个队列实例下有效的推送服务数(为0或为N)
 	for _, addr := range queues {
 		if _, ok := queue2medis[addr]; !ok {
 			queue2medis[addr] = map[string]struct{}{}
 		}
 	}
 
-	// 将所有的 队列实例 按其绑定的 推送服务实例数 分组.
+	// 将所有的 队列实例 按 有效推送服务数 进行分组.
 	// num2queue: 推送服务数量 => [队列实例1, 队列实例2]
 	num2queue := map[int][]string{}
 	medisnums := make([]int, 0, len(queue2medis))
@@ -361,7 +379,7 @@ func (b *Balance) selectQueue(etcdCli *clientv3.Client) ([]string, error) {
 
 	sort.Ints(medisnums)
 
-	// 最终本推送服务将要使用的队列
+	// 优先为当前新启动的推送服务实例(即本实例) 分配 有效消费者数 最少的队列实例.
 	useQueues := make([]string, 0, config.GetConfig().MedisPerMaxConsumerQueueNum)
 exit:
 	for _, num := range medisnums {
