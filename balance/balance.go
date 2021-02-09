@@ -312,7 +312,7 @@ func (b *Balance) selectQueue(etcdCli *clientv3.Client) ([]string, error) {
 	queue2medis := map[string]map[string]struct{}{}
 	for _, kv := range resp.Kvs {
 		arr := strings.Split(string(kv.Key), "#")
-		if _, ok := queue2medis[arr[1]]; ok {
+		if _, ok := queue2medis[arr[1]]; !ok {
 			queue2medis[arr[1]] = map[string]struct{}{}
 		}
 
