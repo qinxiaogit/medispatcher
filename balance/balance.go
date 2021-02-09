@@ -312,6 +312,21 @@ func (b *Balance) selectQueue(etcdCli *clientv3.Client) ([]string, error) {
 	queue2medis := map[string]map[string]struct{}{}
 	for _, kv := range resp.Kvs {
 		arr := strings.Split(string(kv.Key), "#")
+
+		// 正常消息 和 bench消息 部署的是不同的beanstalkd实例 并 由不同的推送服务推送
+		// 正常消息 和 bench消息 的推送服务 都会使用 "__mec.medis.queue_customer#队列ip+端口:推送服务rpc监听地址" 到etcd注册, 这时候必须保证 两种类型的推送服务在选择队列实例的时候不会出现混淆.
+		exists := false
+		for _, addr := range queues {
+			if addr == arr[1] {
+				exists = true
+				break
+			}
+		}
+
+		if !exists {
+			continue
+		}
+
 		if _, ok := queue2medis[arr[1]]; !ok {
 			queue2medis[arr[1]] = map[string]struct{}{}
 		}
