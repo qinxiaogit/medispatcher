@@ -7,9 +7,11 @@ import (
 	"medispatcher/config"
 	"medispatcher/logger"
 	"net"
+	"os"
 	"sort"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	doveclientCli "gitlab.int.jumei.com/JMArch/go-doveclient-cli"
@@ -31,6 +33,9 @@ const (
 	lockKey = "__mec.medis.lock"
 	// 推送服务在etcd注册的租约的时间
 	grantTime = 10
+	// 控制medis重启的etcd key(medispatcher项目会watch这个key的变化决定是否重启medis)
+	// 该变量被推送网关操控(参考mec-gateway项目代码)
+	medisRebootKey = "__mec.medis.reboot"
 )
 
 // NewBalance 返回Balance的单例
@@ -107,6 +112,8 @@ func NewBalance() *Balance {
 
 	balanceInst.willExitChan = make(chan int)
 	balanceInst.exitChan = make(chan int)
+
+	go balanceInst.rebalance()
 
 	return balanceInst
 }
@@ -392,4 +399,66 @@ exit:
 	}
 
 	return useQueues, nil
+}
+
+// rebalance 在队列和推送服务 不均衡的时候, 退出推送服务以便重新分配.
+func (b *Balance) rebalance() {
+	var etcdCli *clientv3.Client
+	var err error
+retry:
+	if etcdCli != nil {
+		etcdCli.Close()
+		time.Sleep(time.Second)
+		logger.GetLogger("DEBUG").Printf("Reconnecting to the etcd server...")
+	}
+	etcdCli, err = clientv3.New(clientv3.Config{
+		Endpoints:            b.endPoints,
+		DialTimeout:          3 * time.Second,
+		DialKeepAliveTime:    5 * time.Second,
+		DialKeepAliveTimeout: 3 * time.Second,
+		AutoSyncInterval:     10 * time.Second,
+	})
+	if err != nil {
+		logger.GetLogger("DEBUG").Printf("Failed to connect to etcd server(%s):%v", strings.Join(b.endPoints, ","), err)
+		goto retry
+	}
+
+	resp, err := etcdCli.Get(context.TODO(), medisRebootKey)
+	if err != nil {
+		logger.GetLogger("DEBUG").Printf("etcd except(GET %s):%v", medisRebootKey, err)
+		goto retry
+	}
+
+	watchChan := etcdCli.Watch(context.TODO(), medisRebootKey, clientv3.WithRev(resp.Header.Revision))
+done:
+	for {
+		select {
+		case <-b.willExitChan:
+			etcdCli.Close()
+			break
+		case e, ok := <-watchChan:
+			if !ok {
+				logger.GetLogger("DEBUG").Printf("etcd watch except:%s", medisRebootKey)
+				goto retry
+			}
+
+			for _, event := range e.Events {
+				if event.Type == clientv3.EventTypePut {
+					if string(event.Kv.Value) == "bench" && config.GetConfig().RunAtBench {
+						etcdCli.Close()
+						logger.GetLogger("DEBUG").Printf("watch %s=%s, The process is about to exit", medisRebootKey, string(event.Kv.Value))
+						syscall.Kill(os.Getpid(), syscall.SIGINT)
+						break done
+					}
+
+					if string(event.Kv.Value) == "normal" && !config.GetConfig().RunAtBench {
+						etcdCli.Close()
+						logger.GetLogger("DEBUG").Printf("watch %s=%s, The process is about to exit", medisRebootKey, string(event.Kv.Value))
+						syscall.Kill(os.Getpid(), syscall.SIGINT)
+						break done
+					}
+				}
+			}
+		}
+	}
 }
