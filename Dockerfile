@@ -1,4 +1,5 @@
 FROM debian:latest
+VOLUME [ "/root/go/src/medispatcher/build/" ]
 RUN echo "deb http://mirrors.aliyun.com/debian/ buster main contrib non-free\n\
 deb http://mirrors.aliyun.com/debian/ buster-updates main contrib non-free\n\
 deb http://mirrors.aliyun.com/debian/ buster-backports main contrib non-free\n\
