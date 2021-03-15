@@ -16,3 +16,16 @@ linux: before-make
 	GOOS=linux $(BUILD_CMD)
 clean:
 	rm -rf build
+docker:
+	mkdir -p /srv/src/medispatcher/build; \
+	cd /srv/; \
+	find . -maxdepth 1 -regex "\./.*"|while read line; do \
+		if [ "$$line" = "." -o "$$line" = "./src" ]; then \
+			continue; \
+		fi; \
+		yes|cp -r $$line /srv/src/medispatcher/; \
+	done && \
+	export GOPATH=/srv/ && \
+	export GO111MODULE="off" && \
+	cd /srv/src/medispatcher && \
+	$(BUILD_CMD)
