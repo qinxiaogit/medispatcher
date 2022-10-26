@@ -1,6 +1,6 @@
 package config
 
-import "medispatcher/Alerter"
+import "github.com/qinxiaogit/medispatcher/Alerter"
 
 type Config struct {
 	// ListenAddr is the network address for providing extra api calls.

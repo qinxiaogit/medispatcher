@@ -5,7 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"medispatcher/Alerter"
+	"github.com/qinxiaogit/medispatcher/Alerter"
 	"os"
 	"path"
 	"path/filepath"

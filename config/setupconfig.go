@@ -4,8 +4,8 @@ package config
 import (
 	"errors"
 	"fmt"
-	util "medispatcher/osutil"
-	"medispatcher/strutil"
+	util "github.com/qinxiaogit/medispatcher/osutil"
+	"github.com/qinxiaogit/medispatcher/strutil"
 	"os"
 	"path"
 	"reflect"
