@@ -32,7 +32,7 @@ func (t *test1) GetChannel() string {
 	return t.c
 }
 
-func TestMain(t *testing.T) {
+func TestMain(m *testing.M) {
 	PrometheusStatisticsStart(":0")
 }
 

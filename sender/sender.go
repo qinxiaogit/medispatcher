@@ -10,7 +10,7 @@ import (
 	"medispatcher/config"
 	"medispatcher/data"
 	"medispatcher/logger"
-	"medispatcher/pushstatistics"
+	"pushstatistics"
 	httproxy "medispatcher/transproxy/http"
 	"net/http"
 	"net/url"

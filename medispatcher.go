@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"medispatcher/balance"
+	"github.com/qinxiaogit/go_many_version/medispatcher/balance"
 	"medispatcher/config"
 	"medispatcher/logger"
 	"medispatcher/msgredist"

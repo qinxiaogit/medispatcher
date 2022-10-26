@@ -14,7 +14,7 @@ import (
 	"syscall"
 	"time"
 
-	doveclientCli "gitlab.int.jumei.com/JMArch/go-doveclient-cli"
+	doveclientCli "medispatcher/doveclient"
 	"go.etcd.io/etcd/clientv3"
 	"go.etcd.io/etcd/clientv3/concurrency"
 )
