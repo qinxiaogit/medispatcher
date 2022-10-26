@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"medispatcher/osutil"
+	"github.com/qinxiaogit/medispatcher/osutil"
 	"time"
 )
 

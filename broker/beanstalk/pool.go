@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-	"medispatcher/logger"
+	"github.com/qinxiaogit/medispatcher/logger"
 	"strings"
 	"sync"
 	"sync/atomic"

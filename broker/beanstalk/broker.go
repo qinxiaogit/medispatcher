@@ -3,7 +3,7 @@ package beanstalk
 
 import (
 	"bufio"
-	"medispatcher/logger"
+	"github.com/qinxiaogit/medispatcher/logger"
 	"net"
 	"sync"
 	"sync/atomic"

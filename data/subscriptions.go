@@ -3,7 +3,7 @@ package data
 import (
 	"database/sql"
 	"fmt"
-	"medispatcher/data/cache"
+	"github.com/qinxiaogit/medispatcher/data/cache"
 	"strconv"
 )
 

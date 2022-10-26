@@ -3,7 +3,7 @@ package data
 import (
 	"fmt"
 	"gopkg.in/vmihailenco/msgpack.v2"
-	"medispatcher/strutil"
+	"github.com/qinxiaogit/medispatcher/strutil"
 	"reflect"
 	"strconv"
 )

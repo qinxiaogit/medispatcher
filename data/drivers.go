@@ -7,7 +7,7 @@ import (
 	"github.com/garyburd/redigo/redis"
 	_ "github.com/go-sql-driver/mysql"
 	"gopkg.in/vmihailenco/msgpack.v2"
-	"medispatcher/config"
+	"github.com/qinxiaogit/medispatcher/config"
 	"strings"
 	"time"
 	"sync"
