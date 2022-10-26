@@ -2,8 +2,8 @@ package handlers
 
 import (
 	"errors"
-	"medispatcher/data/cache"
-	"medispatcher/rpc"
+	"github.com/qinxiaogit/medispatcher/data/cache"
+	"github.com/qinxiaogit/medispatcher/rpc"
 	"reflect"
 )
 

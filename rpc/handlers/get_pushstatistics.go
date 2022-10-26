@@ -2,8 +2,8 @@ package handlers
 
 import (
 	"errors"
-	"medispatcher/pushstatistics"
-	"medispatcher/rpc"
+	"github.com/qinxiaogit/medispatcher/pushstatistics"
+	"github.com/qinxiaogit/medispatcher/rpc"
 )
 
 // GetPushStatistics 获取推送统计数据

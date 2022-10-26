@@ -3,9 +3,9 @@ package handlers
 import (
 	"errors"
 	"fmt"
-	"medispatcher/logger"
-	"medispatcher/rpc"
-	"medispatcher/sender"
+	"github.com/qinxiaogit/medispatcher/logger"
+	"github.com/qinxiaogit/medispatcher/rpc"
+	"github.com/qinxiaogit/medispatcher/sender"
 	"reflect"
 	"runtime/debug"
 )

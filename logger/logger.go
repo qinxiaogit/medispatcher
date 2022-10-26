@@ -4,7 +4,7 @@ package logger
 import (
 	"fmt"
 	"log"
-	"medispatcher/config"
+	"github.com/qinxiaogit/medispatcher/config"
 	"os"
 	"path"
 	"runtime"

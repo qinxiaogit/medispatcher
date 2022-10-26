@@ -1,13 +1,13 @@
 package msgredist
 
 import (
-	"medispatcher/broker"
-	"medispatcher/broker/beanstalk"
-	"medispatcher/config"
-	"medispatcher/data"
-	"medispatcher/filelog"
-	"medispatcher/logger"
-	"medispatcher/sender"
+	"github.com/qinxiaogit/medispatcher/broker"
+	"github.com/qinxiaogit/medispatcher/broker/beanstalk"
+	"github.com/qinxiaogit/medispatcher/config"
+	"github.com/qinxiaogit/medispatcher/data"
+	"github.com/qinxiaogit/medispatcher/filelog"
+	"github.com/qinxiaogit/medispatcher/logger"
+	"github.com/qinxiaogit/medispatcher/sender"
 	"runtime/debug"
 	"sync"
 	"time"

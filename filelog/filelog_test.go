@@ -1,7 +1,7 @@
 package filelog
 
 import (
-	"medispatcher/config"
+	"github.com/qinxiaogit/medispatcher/config"
 	"testing"
 )
 

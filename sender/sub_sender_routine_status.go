@@ -3,7 +3,7 @@ package sender
 import (
 	"errors"
 	"fmt"
-	"medispatcher/data"
+	"github.com/qinxiaogit/medispatcher/data"
 	"reflect"
 	"sync"
 )

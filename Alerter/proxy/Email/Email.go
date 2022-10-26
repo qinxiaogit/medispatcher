@@ -4,8 +4,8 @@ package Email
 import (
 	"errors"
 	"fmt"
-	"medispatcher/Alerter"
-	transproxy "medispatcher/transproxy/http"
+	"github.com/qinxiaogit/medispatcher/Alerter"
+	transproxy "github.com/qinxiaogit/medispatcher/transproxy/http"
 	"regexp"
 	"strings"
 	"time"

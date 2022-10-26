@@ -1,9 +1,9 @@
 package handlers
 
 import (
-	"medispatcher/config"
-	"medispatcher/rpc"
-	"medispatcher/strutil"
+	"github.com/qinxiaogit/medispatcher/config"
+	"github.com/qinxiaogit/medispatcher/rpc"
+	"github.com/qinxiaogit/medispatcher/strutil"
 )
 
 type SetDefaultAlarm struct {

@@ -3,8 +3,8 @@ package main
 
 import (
 	"log"
-	"medispatcher/broker/beanstalk"
-	"medispatcher/config"
+	"github.com/qinxiaogit/medispatcher/broker/beanstalk"
+	"github.com/qinxiaogit/medispatcher/config"
 	"os"
 	"os/signal"
 	"strings"

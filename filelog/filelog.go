@@ -3,7 +3,7 @@ package filelog
 import (
 	"encoding/json"
 	"fmt"
-	"medispatcher/config"
+	"github.com/qinxiaogit/medispatcher/config"
 	"os"
 	"path/filepath"
 	"sync"

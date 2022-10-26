@@ -1,10 +1,10 @@
 package sender
 
 import (
-	"medispatcher/broker"
-	"medispatcher/broker/beanstalk"
-	"medispatcher/config"
-	"medispatcher/logger"
+	"github.com/qinxiaogit/medispatcher/broker"
+	"github.com/qinxiaogit/medispatcher/broker/beanstalk"
+	"github.com/qinxiaogit/medispatcher/config"
+	"github.com/qinxiaogit/medispatcher/logger"
 	"runtime/debug"
 	"sync"
 	"sync/atomic"

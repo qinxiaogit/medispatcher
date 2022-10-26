@@ -3,8 +3,8 @@ package AlarmPlatform
 import (
 	"encoding/json"
 	"errors"
-	"medispatcher/Alerter"
-	transproxy "medispatcher/transproxy/http"
+	"github.com/qinxiaogit/medispatcher/Alerter"
+	transproxy "github.com/qinxiaogit/medispatcher/transproxy/http"
 	"regexp"
 
 	// "strings"

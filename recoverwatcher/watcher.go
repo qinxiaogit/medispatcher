@@ -1,11 +1,11 @@
 package recoverwatcher
 
 import (
-	"medispatcher/broker"
-	"medispatcher/broker/beanstalk"
-	"medispatcher/config"
-	"medispatcher/data"
-	"medispatcher/logger"
+	"github.com/qinxiaogit/medispatcher/broker"
+	"github.com/qinxiaogit/medispatcher/broker/beanstalk"
+	"github.com/qinxiaogit/medispatcher/config"
+	"github.com/qinxiaogit/medispatcher/data"
+	"github.com/qinxiaogit/medispatcher/logger"
 	"reflect"
 	"strings"
 	"time"

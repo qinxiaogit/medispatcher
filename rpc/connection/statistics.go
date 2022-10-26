@@ -3,7 +3,7 @@ package connection
 import (
 	"bytes"
 	"compress/gzip"
-	"medispatcher/logger"
+	"github.com/qinxiaogit/medispatcher/logger"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"time"
 	"sync"
-	"medispatcher/config"
+	"github.com/qinxiaogit/medispatcher/config"
 )
 
 type ConnAction int8

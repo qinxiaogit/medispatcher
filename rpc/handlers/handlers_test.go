@@ -2,8 +2,8 @@ package handlers
 
 import (
 	"errors"
-	"medispatcher/config"
-	"medispatcher/rpclient"
+	"github.com/qinxiaogit/medispatcher/config"
+	"github.com/qinxiaogit/medispatcher/rpclient"
 	"testing"
 )
 

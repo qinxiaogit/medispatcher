@@ -14,7 +14,7 @@ import (
 	"syscall"
 	"time"
 
-	doveclientCli "medispatcher/doveclient"
+	doveclientCli "github.com/qinxiaogit/medispatcher/doveclient"
 	"go.etcd.io/etcd/clientv3"
 	"go.etcd.io/etcd/clientv3/concurrency"
 )

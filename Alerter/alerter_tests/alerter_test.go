@@ -2,9 +2,9 @@ package alerter_test
 
 import (
 	"fmt"
-	"medispatcher/Alerter"
-	_ "medispatcher/Alerter/proxy/Email"
-	_ "medispatcher/Alerter/proxy/Sms"
+	"github.com/qinxiaogit/medispatcher/Alerter"
+	_ "github.com/qinxiaogit/medispatcher/Alerter/proxy/Email"
+	_ "github.com/qinxiaogit/medispatcher/Alerter/proxy/Sms"
 	"testing"
 	"time"
 )

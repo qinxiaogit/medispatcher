@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"fmt"
-	"medispatcher/rpc"
+	"github.com/qinxiaogit/medispatcher/rpc"
 	"net/http"
 	"sync"
 	"time"

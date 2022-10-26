@@ -2,8 +2,8 @@ package sender
 
 import (
     "testing"
-    "medispatcher/Alerter"
-    "medispatcher/config"
+    "github.com/qinxiaogit/medispatcher/Alerter"
+    "github.com/qinxiaogit/medispatcher/config"
 )
 
 func init() {

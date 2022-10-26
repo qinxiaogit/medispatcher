@@ -2,8 +2,8 @@ package handlers
 
 import (
 	"errors"
-	"medispatcher/rpc"
-	"medispatcher/sender"
+	"github.com/qinxiaogit/medispatcher/rpc"
+	"github.com/qinxiaogit/medispatcher/sender"
 )
 
 type GetSubscriptionParams struct {

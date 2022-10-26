@@ -1,7 +1,7 @@
 package sender
 
 import (
-	"medispatcher/config"
+	"github.com/qinxiaogit/medispatcher/config"
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"

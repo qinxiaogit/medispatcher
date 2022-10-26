@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"medispatcher/config"
-	"medispatcher/rpc"
+	"github.com/qinxiaogit/medispatcher/config"
+	"github.com/qinxiaogit/medispatcher/rpc"
 )
 
 type GetDefaultSubscriptionSettings struct {

@@ -3,9 +3,9 @@ package sender
 import (
 	"encoding/json"
 	"fmt"
-	"medispatcher/config"
-	"medispatcher/data"
-	"medispatcher/logger"
+	"github.com/qinxiaogit/medispatcher/config"
+	"github.com/qinxiaogit/medispatcher/data"
+	"github.com/qinxiaogit/medispatcher/logger"
 )
 
 // SubscriptionParams Parameters of the subscription
