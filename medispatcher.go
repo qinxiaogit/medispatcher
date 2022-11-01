@@ -35,7 +35,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	l.InitLogger(config.GetConfig().LOG_DIR, l.InfoLevel, time.FixedZone("Asia/Shanghai", 8*3600))
+	l.InitLogger(config.GetConfig().LOG_DIR, l.InfoLevel, time.FixedZone("Asia/Shanghai", 8*3600),nil)
 	l.LoggerByDay.Debugw("Setup", "Config", config.GetConfig())
 
 	// 将当前 推送服务实例 按策略加入到 特定的一组队列实例 的消费者列表中去.

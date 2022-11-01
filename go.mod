@@ -14,7 +14,8 @@ require (
 	github.com/labstack/gommon v0.4.0
 	github.com/smartystreets/goconvey v1.7.2
 	github.com/sunreaver/logger v1.0.6
-	go.etcd.io/etcd v2.3.8+incompatible
+	go.etcd.io/etcd v3.3.27+incompatible
 	google.golang.org/appengine v1.6.7 // indirect
 	gopkg.in/vmihailenco/msgpack.v2 v2.9.2
+
 )
